@@ -670,7 +670,7 @@ void organize()
   sprintf(filepath, "/tmp/%s-dwm-organize.lock", getenv("USER"));
   if ((file = fopen(filepath, "r"))) {
     fclose(file);
-    spawnsh("${HOME}/bin/organizewm");
+    spawnsh("echo 'dwm organize already executed!' | dmenu");
     return;
   }
 
@@ -703,14 +703,14 @@ void reloaddwm(const Arg * arg)
   writecurmaster();
   writecurwin();
   savekeeptags();
-  spawnsh("${HOME}/bin/reloaddwm");
+  spawnsh("${HOME}/bin/wmreload");
 }
 
 void scratchpadmon(const Arg * arg)
 {
   Monitor *m;
   Client *c;
-  const char *scratchcmd = "scratchterm -class Scratchpad";
+  const char *scratchcmd = "xterm -u8 -class 'Scratchpad'";
   int match = 0;
 
   for (m = mons; m; m = m->next) {

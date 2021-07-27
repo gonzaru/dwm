@@ -1,18 +1,6 @@
 /*
-
-http://dwm.suckless.org/customisation/tagmask
-
-1   1         (tag 1)
-2   10        (tag 2)
-4   100       (tag 3)
-8   1000      (tag 4)
-16  10000     (tag 5)
-32  100000    (tag 6)
-64  1000000   (tag 7)
-128 10000000  (tag 8)
-256 100000000 (tag 9)
-
-*/
+ * My custom functions to add dwm functionality without patching dwm.c
+ */
 
 /* global macros */
 #define FIRST_TAG  1 << 0

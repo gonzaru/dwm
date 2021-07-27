@@ -180,13 +180,11 @@ void toggleborder(const Arg * arg)
   if (c->bw) {
     c->oldbw = c->bw;
     c->bw = 0;
-    wc.border_width = c->bw;
-    XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
   } else {
     c->bw = c->oldbw;
-    wc.border_width = c->bw;
-    XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
   }
+  wc.border_width = c->bw;
+  XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
 }
 
 void togglefullscr(const Arg * arg)

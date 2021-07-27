@@ -92,13 +92,13 @@ void writecurtag(void)
   FILE *file;
   Monitor *m;
   char filepath[256];
+  char *user = getenv("USER");
   char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
   file = fopen(filepath, "w+");
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
@@ -117,13 +117,13 @@ void writecurmaster(void)
   Monitor *m;
   Client *c;
   char filepath[256];
+  char *user = getenv("USER");
   char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
   if (!selmon->sel || selmon->sel->isfloating) {
     remove(filepath);
     return;
@@ -148,13 +148,13 @@ void writecurwin(void)
 {
   FILE *file;
   char filepath[256];
+  char *user = getenv("USER");
   char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
   if (!selmon->sel) {
     remove(filepath);
     return;
@@ -172,14 +172,14 @@ void writemfact(void)
 {
   FILE *file;
   char filepath[256];
-  Monitor *m;
+  char *user = getenv("USER");
   char *tmpdir;
+  Monitor *m;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -462,21 +462,21 @@ void savekeeptags()
   Client *c;
   FILE *file = NULL;
   char filepath[256];
+  char *user = getenv("USER");
   char *tmpdir;
-
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
 
   writemfact();
   writecurtag();
   writecurmaster();
   writecurwin();
 
-  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, getenv("USER"));
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
   remove(filepath);
 
-  sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -497,17 +497,17 @@ void putcurtag()
   FILE *file;
   char filepath[256];
   char line[256];
+  char *user = getenv("USER");
+  char *tmpdir;
   Monitor *m;
   int fmon;
   int ftag;
   Arg a;
-  char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -541,17 +541,17 @@ void putcurmaster()
   FILE *file;
   char filepath[256];
   char line[256];
+  char *user = getenv("USER");
+  char *tmpdir;
   Monitor *m;
   Client *c;
   int fmon;
   long unsigned int fwin;
-  char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -584,18 +584,18 @@ void putcurwin()
   FILE *file;
   char filepath[256];
   char line[256];
+  char *user = getenv("USER");
+  char *tmpdir;
   Arg a;
   Monitor *m;
   Client *c;
   int fmon;
   long unsigned int fwin;
-  char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -632,15 +632,15 @@ void putfilemfact()
   FILE *file;
   char filepath[256];
   char line[256];
+  char *user = getenv("USER");
+  char *tmpdir;
   int fmon;
   float fmfact;
-  char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -668,19 +668,19 @@ void putkeeptags()
   FILE *file;
   char filepath[256];
   char line[256];
+  char *user = getenv("USER");
+  char *tmpdir;
   int fmon;
   int ftag;
   int fmaster;
   int fsel;
   int ffloating;
   long unsigned int fwin;
-  char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -719,13 +719,13 @@ void organize()
 {
   FILE *file = NULL;
   char filepath[256];
+  char *user = getenv("USER");
   char *tmpdir;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-
-  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, getenv("USER"));
+  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
   if ((file = fopen(filepath, "r"))) {
     fclose(file);
     spawnsh("echo 'dwm organize already executed!' | dmenu");
@@ -747,7 +747,7 @@ void organize()
   /* focus to latest current window */
   putcurwin();
 
- sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, getenv("USER"));
+ sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
  if (!(file = fopen(filepath, "w+"))) {
    debug("can't create file %s", filepath);
  }

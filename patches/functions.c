@@ -885,16 +885,8 @@ void reloadbrowser(const Arg * arg)
 
 void focusmonmaster(const Arg * arg)
 {
-  Arg a;
-
-  if (arg) {
-    focusmon(arg);
-    focusmaster(arg);
-  } else {
-    a.i = selmon->num;
-    focusmon(&a);
-    focusmaster(&a);
-  }
+  focusmon(arg);
+  focusmaster(arg);
 }
 
 int is_zoommoneable(void)

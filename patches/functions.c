@@ -14,8 +14,8 @@
 void spawnsh(const char *cmd)
 {
   const char *shcmd[] = { "/bin/sh", "-c", cmd, NULL };
-
   Arg a = {.v = shcmd };
+
   spawn(&a);
 }
 

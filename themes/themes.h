@@ -49,10 +49,10 @@ static const char selfgcolor[]      =  WHITE;
 #if 0
 static const char normbordercolor[] = "#cccccc";
 static const char normbgcolor[]     = "#cccccc";
-static const char normfgcolor[]     = "#000000";
+static const char normfgcolor[]     = BLACK;
 static const char selbordercolor[]  = "#0066ff";
 static const char selbgcolor[]      = "#0066ff";
-static const char selfgcolor[]      = "#ffffff";
+static const char selfgcolor[]      = WHITE;
 #endif
 
 /* new default dwm theme */
@@ -69,20 +69,20 @@ static const char selfgcolor[]      = "#eeeeee";
 #if 0
 static const char normbordercolor[] = "#c1c48b";
 static const char normbgcolor[]     = "#c1c48b";
-static const char normfgcolor[]     = "#000000";
+static const char normfgcolor[]     = BLACK;
 static const char selbordercolor[]  = WMII_BROWN;
 static const char selbgcolor[]      = "#81654f";
-static const char selfgcolor[]      = "#ffffff";
+static const char selfgcolor[]      = WHITE;
 #endif
 
 /* dark acme theme */
 #if 0
 static const char normbordercolor[] = "#9eeeee";
 static const char normbgcolor[]     = "#9eeeee";
-static const char normfgcolor[]     = "#000000";
-static const char selbordercolor[]  =  "#eeee9e";
+static const char normfgcolor[]     = BLACK;
+static const char selbordercolor[]  = "#eeee9e";
 static const char selbgcolor[]      = "#eeee9e";
-static const char selfgcolor[]      = "#000000";
+static const char selfgcolor[]      = BLACK;
 #endif
 
 /* wombat theme */

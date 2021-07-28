@@ -124,7 +124,7 @@ static Key keys[] = {
   { MODKEY,                         XK_bracketleft,  zoomlast,           {0} },
   { MODKEY,                         XK_bracketright, zoomfirst,          {0} },
   { MODKEY|ShiftMask,               XK_Escape,       spawn,              SHCMD("xkill") },
-  { MODKEY|ShiftMask|ControlMask,   XK_Escape,       spawn,              SHCMD("dmkill") },
+  { MODKEY|ShiftMask|ControlMask,   XK_Escape,       spawn,              SHCMD("wmkill") },
   { MODKEY|ShiftMask,               XK_p,            spawn,              SHCMD("gmrun") },
   { MODKEY|ShiftMask|ControlMask,   XK_p,            spawn,              SHCMD("wmmenu") },
   { MODKEY|ControlMask,             XK_Return,       scratchpadmon,      {0} },

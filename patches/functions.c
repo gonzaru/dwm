@@ -47,7 +47,7 @@ char *getwindowclass(Window w)
 
   XGetClassHint(dpy, w, &ch);
 
-  return (strlen(ch.res_class)) ? ch.res_class : NULL;
+  return ch.res_class;
 }
 
 /* get client window name */
@@ -57,7 +57,7 @@ char *getwindowname(Window w)
 
   XGetClassHint(dpy, w, &ch);
 
-  return (strlen(ch.res_name)) ? ch.res_name : NULL;
+  return ch.res_name;
 }
 
 /* put client in master area */
@@ -71,20 +71,14 @@ void setasmaster(Client *c)
   }
 
   /* check if has more than 1 client */
-  for (cc = selmon->clients; cc; cc = cc->next) {
-      if (ISVISIBLE(cc)) {
+  for (cc = selmon->clients; cc && nc < 2; cc = cc->next) {
+      if (ISVISIBLE(cc) && !cc->isfloating) {
         nc++;
       }
   }
   if (nc >= 2) {
-      pop(c);
+    pop(c);
   }
-}
-
-/* get current tag */
-unsigned int getcurtag(void)
-{
-  return selmon->tagset[selmon->seltags];
 }
 
 void writecurtag(void)
@@ -120,15 +114,14 @@ void writecurmaster(void)
   char *user = getenv("USER");
   char *tmpdir;
 
+  if (!selmon->sel || selmon->sel->isfloating) {
+    return;
+  }
+
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
   sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
-  if (!selmon->sel || selmon->sel->isfloating) {
-    remove(filepath);
-    return;
-  }
-
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -151,15 +144,14 @@ void writecurwin(void)
   char *user = getenv("USER");
   char *tmpdir;
 
+  if (!selmon->sel) {
+    return;
+  }
+
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
   sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
-  if (!selmon->sel) {
-    remove(filepath);
-    return;
-  }
-
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -225,23 +217,29 @@ void togglemousecursor(const Arg * arg)
   int root_x, root_y;
   int win_x, win_y;
   unsigned int mask_ret;
-  /* pointer position to 'hide' */
-  int pointer_x = selmon->mx + 1;
+  /* pointer position to "hide" */
+  int pointer_x = selmon->mx + 5;
   int pointer_y = 0;
-  /* hack position */
-  static int root_x_hackpos = 0;
-  static int root_y_hackpos = 0;
+  /* position */
+  static int root_x_pos = 0;
+  static int root_y_pos = 0;
 
-  if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &root_x, &root_y, &win_x, &win_y, &mask_ret)) {
-    /* mouse was not found */
+  /* only if bar is on */
+  if (!selmon->showbar) {
     return;
   }
 
+  /* get current x, y mouse pointer */
+  if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &root_x, &root_y, &win_x, &win_y, &mask_ret)) {
+    return;
+  }
+
+  /* toggle mouse pointer position */
   if (root_y == 0 && root_x == pointer_x) {
-    XWarpPointer(dpy, None, root, 0, 0, 0, 0, root_x_hackpos, root_y_hackpos);
+    XWarpPointer(dpy, None, root, 0, 0, 0, 0, root_x_pos, root_y_pos);
   } else {
-    root_x_hackpos = root_x;
-    root_y_hackpos = root_y;
+    root_x_pos = root_x;
+    root_y_pos = root_y;
     XWarpPointer(dpy, None, root, 0, 0, 0, 0, pointer_x, pointer_y);
   }
 }
@@ -390,38 +388,13 @@ void focuslast(const Arg * arg)
 
   cl = selmon->sel;
   for (c = selmon->clients; c; c = c->next) {
-    if (ISVISIBLE(c)) {
+    if (ISVISIBLE(c) && !c->isfloating) {
       cl = c;
     }
   }
   if (cl) {
     focus(cl);
   }
-}
-
-/* focus first client after master */
-void focusfirst(const Arg * arg)
-{
-  Client *c;
-  Client *n = NULL;
-  int i;
-
-  if (!selmon->sel || selmon->sel->isfloating) {
-    return;
-  }
-
-   for (i = 0, c = selmon->clients; c; c = c->next) {
-     if (ISVISIBLE(c)) {
-       if (i) {
-         n = c;
-         break;
-       }
-       i++;
-     }
-   }
-   if (n) {
-     focus(n);
-   }
 }
 
 /* next tag */
@@ -431,7 +404,7 @@ void nexttag(const Arg * arg)
   unsigned int curtag;
   unsigned int nextag;
 
-  curtag = getcurtag();
+  curtag = selmon->tagset[selmon->seltags];
   nextag = curtag << 1;
   if (nextag > LAST_TAG) {
     nextag = FIRST_TAG;
@@ -447,7 +420,7 @@ void prevtag(const Arg * arg)
   unsigned int curtag;
   unsigned int prevtag;
 
-  curtag = getcurtag();
+  curtag = selmon->tagset[selmon->seltags];
   prevtag = curtag >> 1;
   if (prevtag < FIRST_TAG) {
     prevtag = LAST_TAG;
@@ -486,7 +459,7 @@ void savekeeptags()
     for (c = m->clients; c; c = c->next) {
       fprintf(file, "%d %d %d %d %d %lud %s %s\n", c->mon->num,
         c->tags, (ismaster(c) == 1) ? 1 : 0, (c == selmon->sel) ? 1 : 0,
-        (c->isfloating) ? 1: 0, c->win, getwindowclass(c->win), c->name);
+        (c->isfloating) ? 1 : 0, c->win, getwindowclass(c->win), c->name);
     }
   }
   fclose(file);
@@ -781,7 +754,7 @@ void scratchpadmon(const Arg * arg)
           setasmaster(c);
         } else {
           if (!ISVISIBLE(c)) {
-            c->tags = getcurtag();
+            c->tags = selmon->tagset[selmon->seltags];
             arrange(c->mon);
             setasmaster(c);
           } else {
@@ -898,19 +871,15 @@ void reloadbrowser(const Arg * arg)
   Window w_ret;
   int current_x, current_y;
   int win_x, win_y;
+  int browser_x, browser_y;
   unsigned int mask_ret;
 
-  /* browser coordinates */
-  int browser_x, browser_y;
-
-  /* get current x, y pointer */
+  /* get current x, y mouse pointer */
   if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &current_x, &current_y, &win_x, &win_y, &mask_ret)) {
-    /* no mouse found */
     return;
   }
 
   cc = selmon->sel;
-
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
       if (strcmp(getwindowclass(c->win), arg->v) == 0 || (strcmp(defbrowser, arg->v) == 0)) {
@@ -933,23 +902,7 @@ void focusmonmaster(const Arg * arg)
   focusmaster(arg);
 }
 
-int is_zoommoneable(void)
-{
-  Monitor *m;
-  Client *c;
-
-  /* check if the other monitor contains at least one client in the same tag */
-  for (m = mons; m; m = m->next) {
-    for (c = m->clients; c; c = c->next) {
-      if (ISVISIBLE(c) && c->mon != selmon && c->tags == selmon->tagset[selmon->seltags]) {
-        return 1;
-      }
-    }
-  }
-
-  return 0;
-}
-
+/* zoom/cycles monitors */
 void zoommon(const Arg * arg)
 {
   Monitor *m;

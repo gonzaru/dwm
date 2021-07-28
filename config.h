@@ -125,13 +125,14 @@ static Key keys[] = {
   { MODKEY,                         XK_bracketright, zoomfirst,          {0} },
   { MODKEY|ShiftMask,               XK_Escape,       spawn,              SHCMD("xkill") },
   { MODKEY|ShiftMask|ControlMask,   XK_Escape,       spawn,              SHCMD("dmkill") },
-  { MODKEY|ShiftMask| ControlMask,  XK_p,            spawn,              SHCMD("wmmenu") },
-  { MODKEY|ShiftMask| ControlMask,  XK_Return,       zoommon,            {0} },
+  { MODKEY|ShiftMask,               XK_p,            spawn,              SHCMD("gmrun") },
+  { MODKEY|ShiftMask|ControlMask,   XK_p,            spawn,              SHCMD("wmmenu") },
   { MODKEY|ControlMask,             XK_Return,       scratchpadmon,      {0} },
+  { MODKEY|ShiftMask|ControlMask,   XK_Return,       zoommon,            {0} },
   { MODKEY|ControlMask,             XK_bracketleft,  spawn,              SHCMD("primary2clipboard") },
   { MODKEY|ControlMask,             XK_bracketright, spawn,              SHCMD("clipboard2primary") },
-  { MODKEY|ShiftMask| ControlMask,  XK_bracketleft,  spawn,              SHCMD("xclip -o | dmenu -l 25") },
-  { MODKEY|ShiftMask| ControlMask,  XK_bracketright, spawn,              SHCMD("xclip -o -selection clipboard | dmenu -l 25") },
+  { MODKEY|ShiftMask|ControlMask,   XK_bracketleft,  spawn,              SHCMD("xclip -o | dmenu -l 25") },
+  { MODKEY|ShiftMask|ControlMask,   XK_bracketright, spawn,              SHCMD("xclip -o -selection clipboard | dmenu -l 25") },
   { MODKEY,                         XK_F9,           spawn,              SHCMD("volume toggle && wmbarupdate") },
   { MODKEY,                         XK_F11,          spawn,              SHCMD("volume down && wmbarupdate") },
   { MODKEY,                         XK_F12,          spawn,              SHCMD("volume up && wmbarupdate") },
@@ -156,8 +157,8 @@ static Key keys[] = {
   { MODKEY,                         XK_q,            reloaddwm,          {0} },
   { MODKEY,                         XK_s,            savekeeptags,       {0} },
   { MODKEY,                         XK_F4,           spawn,              SHCMD("keyboard-toggle && wmbarupdate") },
+  { MODKEY,                         XK_o,            organize,           {0} },
   { MODKEY|ShiftMask,               XK_o,            putfilemfact,       {0} },
-  { MODKEY, XK_o, organize, {0} },
 };
 
 /* button definitions */

@@ -1,5 +1,5 @@
 /*
- * My custom functions to add dwm functionality without patching dwm.c
+ * My customized functions to add dwm functionality without patching dwm.c
  */
 
 /* global macros */

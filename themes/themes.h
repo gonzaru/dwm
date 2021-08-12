@@ -1,3 +1,8 @@
+/*
+ * By Gonzaru
+ * Distributed under the terms of the GNU General Public License v3
+ */
+
 /* custom colors */
 #define BLACK                   "#000000"
 #define WHITE                   "#FFFFFF"

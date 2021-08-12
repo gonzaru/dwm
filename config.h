@@ -1,4 +1,9 @@
-/* for multimedia key buttons */
+/*
+ * By Gonzaru
+ * Distributed under the terms of the GNU General Public License v3
+ */
+
+/* enable multimedia key buttons */
 /* #include <X11/XF86keysym.h> */
 
 /* some custom colors & themes */

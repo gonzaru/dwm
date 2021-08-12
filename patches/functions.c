@@ -1,5 +1,7 @@
 /*
+ * By Gonzaru
  * My customized functions to add dwm functionality without patching dwm.c
+ * Distributed under the terms of the GNU General Public License v3
  */
 
 /* global macros */
@@ -10,14 +12,43 @@
 /* default temporary directory path */
 #define DEFAULT_TMPDIR "/tmp"
 
-/* exec shell command */
-void spawnsh(const char *cmd)
-{
-  const char *shcmd[] = { "/bin/sh", "-c", cmd, NULL };
-  Arg a = {.v = shcmd };
-
-  spawn(&a);
-}
+/* function declarations */
+void debug(const char *errstr, ...);
+void fakepresskey(Window win, char *typemask, char *strkey);
+void focusclient(const Arg *arg);
+void focuslast(const Arg *arg);
+void focusmaster(const Arg *arg);
+void focusmonmaster(const Arg *arg);
+char *getwindowclass(Window w);
+char *getwindowname(Window w);
+int ismaster(Client *c);
+void nexttag(const Arg *arg);
+void organize(const Arg *arg);
+void pressmousecursor(const Arg *arg);
+void prevtag(const Arg *arg);
+void putcurmaster(void);
+void putcurtag(void);
+void putcurwin(void);
+void putfilemfact(const Arg *arg);
+void putkeeptags(void);
+void reloadbrowser(const Arg *arg);
+void reloaddwm(const Arg *arg);
+void savekeeptags(const Arg *arg);
+void scratchpadmon(const Arg *arg);
+void setasmaster(Client *c);
+int setwindownameclass(Window w, char *sn, char *sc);
+void showurgent(const Arg *arg);
+void spawnsh(const char *cmd);
+void toggleborder(const Arg *arg);
+void togglefullscr(const Arg *arg);
+void togglemousecursor(const Arg *arg);
+void writecurmaster(void);
+void writecurtag(void);
+void writecurwin(void);
+void writemfact(void);
+void zoomfirst(const Arg *arg);
+void zoomlast(const Arg *arg);
+void zoommon(const Arg *arg);
 
 /* debug info */
 void debug(const char *errstr, ...)
@@ -29,15 +60,109 @@ void debug(const char *errstr, ...)
   va_end(ap);
 }
 
-/* set client windowclass */
-int setwindownameclass(Window w, char *sn, char *sc)
+void fakepresskey(Window win, char *typemask, char *strkey)
 {
-  XClassHint ch = { NULL, NULL };
+  XEvent ev;
 
-  ch.res_name = sn;
-  ch.res_class = sc;
+  memset(&ev, 0x00, sizeof(ev));
+  ev.xkey.display = dpy;
+  ev.xkey.window = win;
+  ev.xkey.subwindow = None;
 
-  return XSetClassHint(dpy, w, &ch);
+  if (strcmp(typemask, "ControlMask") == 0) {
+    ev.xkey.state = ControlMask;
+  }
+  if (strcmp(typemask, "ShiftMask") == 0) {
+    ev.xkey.state = ShiftMask;
+  }
+  if (strcmp(typemask, "Mod1Mask") == 0) {
+    ev.xkey.state = Mod1Mask;
+  }
+  if (strcmp(typemask, "Mod4Mask") == 0) {
+    ev.xkey.state = Mod4Mask;
+  }
+
+  ev.xkey.keycode = XKeysymToKeycode(dpy, XStringToKeysym(strkey));
+  ev.xkey.same_screen = True;
+
+  /* press */
+  ev.xkey.type = KeyPress;
+  XSendEvent(dpy, win, True, KeyPressMask, &ev);
+  XFlush(dpy);
+  /* 100ms to not ignore xsendevent... */
+  usleep(100000);
+
+  /* release */
+  ev.xkey.type = KeyRelease;
+  XSendEvent(dpy, win, True, KeyReleaseMask, &ev);
+  XFlush(dpy);
+  /* 100ms to not ignore xsendevent... */
+  usleep(100000);
+}
+
+void focusclient(const Arg *arg)
+{
+  Arg a;
+  Monitor *m;
+  Client *c;
+
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      if (strcmp(getwindowclass(c->win), arg->v) == 0) {
+        if (m != selmon) {
+          unfocus(selmon->sel, True);
+          selmon = c->mon;
+        }
+        a.ui = c->tags;
+        view(&a);
+        focus(c);
+        arrange(c->mon);
+        return;
+      }
+    }
+  }
+}
+
+/* focus last client */
+void focuslast(const Arg *arg)
+{
+  Client *c;
+  Client *cl;
+
+  if (!selmon->sel || selmon->sel->isfloating) {
+    return;
+  }
+
+  cl = selmon->sel;
+  for (c = selmon->clients; c; c = c->next) {
+    if (ISVISIBLE(c) && !c->isfloating) {
+      cl = c;
+    }
+  }
+  if (cl) {
+    focus(cl);
+  }
+}
+
+/* focus master */
+void focusmaster(const Arg *arg)
+{
+  Client *c;
+
+  if (!selmon->sel || !selmon->nmaster) {
+    return;
+  }
+
+  c = nexttiled(selmon->clients);
+  if (c) {
+    focus(c);
+  }
+}
+
+void focusmonmaster(const Arg *arg)
+{
+  focusmon(arg);
+  focusmaster(arg);
 }
 
 /* get client window class */
@@ -60,31 +185,39 @@ char *getwindowname(Window w)
   return ch.res_name;
 }
 
-/* put client in master area */
-void setasmaster(Client *c)
+/* check if client is master */
+int ismaster(Client *c)
 {
-  Client *cc;
-  int nc = 0;
+  Client *cm;
 
-  if (!c || c->isfloating) {
-    return;
+  if (!c || !c->mon->nmaster || c->isfloating) {
+    return 0;
   }
 
-  /* check if has more than 1 client */
-  for (cc = selmon->clients; cc && nc < 2; cc = cc->next) {
-      if (ISVISIBLE(cc) && !cc->isfloating) {
-        nc++;
-      }
-  }
-  if (nc >= 2) {
-    pop(c);
-  }
+  cm = nexttiled(c->mon->clients);
+
+  return (cm == c) ? 1 : 0;
 }
 
-void writecurtag(void)
+/* next tag */
+void nexttag(const Arg *arg)
 {
-  FILE *file;
-  Monitor *m;
+  Arg a;
+  unsigned int curtag;
+  unsigned int nextag;
+
+  curtag = selmon->tagset[selmon->seltags];
+  nextag = curtag << 1;
+  if (nextag > LAST_TAG) {
+    nextag = FIRST_TAG;
+  }
+  a.ui = nextag;
+  view(&a);
+}
+
+void organize(const Arg *arg)
+{
+  FILE *file = NULL;
   char filepath[256];
   char *user = getenv("USER");
   char *tmpdir;
@@ -92,159 +225,36 @@ void writecurtag(void)
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-  sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
-  file = fopen(filepath, "w+");
-  if (!(file = fopen(filepath, "w+"))) {
-    debug("can't create file %s", filepath);
+  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
+  if ((file = fopen(filepath, "r"))) {
+    fclose(file);
+    spawnsh("echo 'dwm organize already executed!' | dmenu");
     return;
   }
 
-  for (m = mons; m; m = m->next) {
-    fprintf(file, "%d %d\n", m->num, m->tagset[m->seltags]);
-  }
-  fclose(file);
+  /* organize tags after reload */
+  putkeeptags();
+
+  /* set fmfact for all monitors */
+  putfilemfact(arg);
+
+  /* go to latest monitor current tag */
+  putcurtag();
+
+  /* set as master to latest current master window */
+  putcurmaster();
+
+  /* focus to latest current window */
+  putcurwin();
+
+ sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
+ if (!(file = fopen(filepath, "w+"))) {
+   debug("can't create file %s", filepath);
+ }
+ fclose(file);
 }
 
-void writecurmaster(void)
-{
-  FILE *file;
-  Monitor *m;
-  Client *c;
-  char filepath[256];
-  char *user = getenv("USER");
-  char *tmpdir;
-
-  if (!selmon->sel || selmon->sel->isfloating) {
-    return;
-  }
-
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
-  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
-  if (!(file = fopen(filepath, "w+"))) {
-    debug("can't create file %s", filepath);
-    return;
-  }
-
-  /* get the first master on each monitor */
-  for (m = mons; m; m = m->next) {
-    c = nexttiled(m->clients);
-    if (c) {
-      fprintf(file, "%d %lud\n", c->mon->num, c->win);
-    }
-  }
-  fclose(file);
-}
-
-void writecurwin(void)
-{
-  FILE *file;
-  char filepath[256];
-  char *user = getenv("USER");
-  char *tmpdir;
-
-  if (!selmon->sel) {
-    return;
-  }
-
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
-  sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
-  if (!(file = fopen(filepath, "w+"))) {
-    debug("can't create file %s", filepath);
-    return;
-  }
-  fprintf(file, "%d %lud\n", selmon->num, selmon->sel->win);
-  fclose(file);
-}
-
-void writemfact(void)
-{
-  FILE *file;
-  char filepath[256];
-  char *user = getenv("USER");
-  char *tmpdir;
-  Monitor *m;
-
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
-  sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
-  if (!(file = fopen(filepath, "w+"))) {
-    debug("can't create file %s", filepath);
-    return;
-  }
-
-  for (m = mons; m; m = m->next) {
-    fprintf(file, "%d %.2f\n", m->num, m->mfact);
-  }
-  fclose(file);
-}
-
-void toggleborder(const Arg * arg)
-{
-  Client *c = selmon->sel;
-  XWindowChanges wc;
-
-  if (!c) {
-    return;
-  }
-
-  if (c->bw) {
-    c->oldbw = c->bw;
-    c->bw = 0;
-  } else {
-    c->bw = c->oldbw;
-  }
-  wc.border_width = c->bw;
-  XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
-}
-
-void togglefullscr(const Arg * arg)
-{
-  if (!selmon->sel) {
-    return;
-  }
-
-  setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
-}
-
-void togglemousecursor(const Arg * arg)
-{
-  Window w_ret;
-  int root_x, root_y;
-  int win_x, win_y;
-  unsigned int mask_ret;
-  /* pointer position to "hide" */
-  int pointer_x = selmon->mx + 5;
-  int pointer_y = 0;
-  /* position */
-  static int root_x_pos = 0;
-  static int root_y_pos = 0;
-
-  /* only if bar is on */
-  if (!selmon->showbar) {
-    return;
-  }
-
-  /* get current x, y mouse pointer */
-  if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &root_x, &root_y, &win_x, &win_y, &mask_ret)) {
-    return;
-  }
-
-  /* toggle mouse pointer position */
-  if (root_y == 0 && root_x == pointer_x) {
-    XWarpPointer(dpy, None, root, 0, 0, 0, 0, root_x_pos, root_y_pos);
-  } else {
-    root_x_pos = root_x;
-    root_y_pos = root_y;
-    XWarpPointer(dpy, None, root, 0, 0, 0, 0, pointer_x, pointer_y);
-  }
-}
-
-void pressmousecursor(const Arg * arg)
+void pressmousecursor(const Arg *arg)
 {
   XEvent event;
   int button_n = 0;
@@ -307,114 +317,8 @@ void pressmousecursor(const Arg * arg)
   XFlush(dpy);
 }
 
-void fakepresskey(Window win, char *typemask, char *strkey)
-{
-  XEvent ev;
-
-  memset(&ev, 0x00, sizeof(ev));
-  ev.xkey.display = dpy;
-  ev.xkey.window = win;
-  ev.xkey.subwindow = None;
-
-  if (strcmp(typemask, "ControlMask") == 0) {
-    ev.xkey.state = ControlMask;
-  }
-  if (strcmp(typemask, "ShiftMask") == 0) {
-    ev.xkey.state = ShiftMask;
-  }
-  if (strcmp(typemask, "Mod1Mask") == 0) {
-    ev.xkey.state = Mod1Mask;
-  }
-  if (strcmp(typemask, "Mod4Mask") == 0) {
-    ev.xkey.state = Mod4Mask;
-  }
-
-  ev.xkey.keycode = XKeysymToKeycode(dpy, XStringToKeysym(strkey));
-  ev.xkey.same_screen = True;
-
-  /* press */
-  ev.xkey.type = KeyPress;
-  XSendEvent(dpy, win, True, KeyPressMask, &ev);
-  XFlush(dpy);
-  /* 100ms to not ignore xsendevent... */
-  usleep(100000);
-
-  /* release */
-  ev.xkey.type = KeyRelease;
-  XSendEvent(dpy, win, True, KeyReleaseMask, &ev);
-  XFlush(dpy);
-  /* 100ms to not ignore xsendevent... */
-  usleep(100000);
-}
-
-/* focus master */
-void focusmaster(const Arg * arg)
-{
-  Client *c;
-
-  if (!selmon->sel || !selmon->nmaster) {
-    return;
-  }
-
-  c = nexttiled(selmon->clients);
-  if (c) {
-    focus(c);
-  }
-}
-
-/* check if client is master */
-int ismaster(Client * c)
-{
-  Client *cm;
-
-  if (!c || !c->mon->nmaster || c->isfloating) {
-    return 0;
-  }
-
-  cm = nexttiled(c->mon->clients);
-
-  return (cm == c) ? 1 : 0;
-}
-
-/* focus last client */
-void focuslast(const Arg * arg)
-{
-  Client *c;
-  Client *cl;
-
-  if (!selmon->sel || selmon->sel->isfloating) {
-    return;
-  }
-
-  cl = selmon->sel;
-  for (c = selmon->clients; c; c = c->next) {
-    if (ISVISIBLE(c) && !c->isfloating) {
-      cl = c;
-    }
-  }
-  if (cl) {
-    focus(cl);
-  }
-}
-
-/* next tag */
-void nexttag(const Arg * arg)
-{
-  Arg a;
-  unsigned int curtag;
-  unsigned int nextag;
-
-  curtag = selmon->tagset[selmon->seltags];
-  nextag = curtag << 1;
-  if (nextag > LAST_TAG) {
-    nextag = FIRST_TAG;
-  }
-  a.ui = nextag;
-  view(&a);
-}
-
 /* previous tag */
-void prevtag(const Arg * arg)
+void prevtag(const Arg *arg)
 {
   Arg a;
   unsigned int curtag;
@@ -429,43 +333,50 @@ void prevtag(const Arg * arg)
   view(&a);
 }
 
-void savekeeptags()
+void putcurmaster(void)
 {
-  Monitor *m;
-  Client *c;
-  FILE *file = NULL;
+  FILE *file;
   char filepath[256];
+  char line[256];
   char *user = getenv("USER");
   char *tmpdir;
-
-  writemfact();
-  writecurtag();
-  writecurmaster();
-  writecurwin();
+  Monitor *m;
+  Client *c;
+  int fmon;
+  long unsigned int fwin;
 
   if (!(tmpdir = getenv("TMPDIR"))) {
     tmpdir = DEFAULT_TMPDIR;
   }
-  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
-  remove(filepath);
-
-  sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
-  if (!(file = fopen(filepath, "w+"))) {
-    debug("can't create file %s", filepath);
+  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "r"))) {
+    debug("can't open file %s", filepath);
     return;
   }
 
-  for (m = mons; m; m = m->next) {
-    for (c = m->clients; c; c = c->next) {
-      fprintf(file, "%d %d %d %d %d %lud %s %s\n", c->mon->num,
-        c->tags, (ismaster(c) == 1) ? 1 : 0, (c == selmon->sel) ? 1 : 0,
-        (c->isfloating) ? 1 : 0, c->win, getwindowclass(c->win), c->name);
+  while (!feof(file)) {
+    if (fgets(line, sizeof line - 1, file)) {
+      sscanf(line, "%d %lud", &fmon, &fwin);
+      for (m = mons; m; m = m->next) {
+        for (c = m->clients; c; c = c->next) {
+          if (c->win == fwin) {
+            if (c->mon != selmon) {
+              unfocus(selmon->sel, True);
+              selmon = c->mon;
+              focus(NULL);
+            }
+            setasmaster(c);
+            arrange(c->mon);
+            break;
+          }
+        }
+      }
     }
   }
   fclose(file);
 }
 
-void putcurtag()
+void putcurtag(void)
 {
   FILE *file;
   char filepath[256];
@@ -509,50 +420,7 @@ void putcurtag()
   fclose(file);
 }
 
-void putcurmaster()
-{
-  FILE *file;
-  char filepath[256];
-  char line[256];
-  char *user = getenv("USER");
-  char *tmpdir;
-  Monitor *m;
-  Client *c;
-  int fmon;
-  long unsigned int fwin;
-
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
-  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
-  if (!(file = fopen(filepath, "r"))) {
-    debug("can't open file %s", filepath);
-    return;
-  }
-
-  while (!feof(file)) {
-    if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %lud", &fmon, &fwin);
-      for (m = mons; m; m = m->next) {
-        for (c = m->clients; c; c = c->next) {
-          if (c->win == fwin) {
-            if (c->mon != selmon) {
-              unfocus(selmon->sel, True);
-              selmon = c->mon;
-              focus(NULL);
-            }
-            setasmaster(c);
-            arrange(c->mon);
-            break;
-          }
-        }
-      }
-    }
-  }
-  fclose(file);
-}
-
-void putcurwin()
+void putcurwin(void)
 {
   FILE *file;
   char filepath[256];
@@ -599,7 +467,7 @@ void putcurwin()
   fclose(file);
 }
 
-void putfilemfact()
+void putfilemfact(const Arg *arg)
 {
   Monitor *m;
   FILE *file;
@@ -633,7 +501,7 @@ void putfilemfact()
   fclose(file);
 }
 
-void putkeeptags()
+void putkeeptags(void)
 {
   Arg a;
   Monitor *m;
@@ -688,56 +556,86 @@ void putkeeptags()
   arrange(selmon);
 }
 
-void organize()
+void reloadbrowser(const Arg *arg)
 {
-  FILE *file = NULL;
-  char filepath[256];
-  char *user = getenv("USER");
-  char *tmpdir;
+  Monitor *m;
+  Client *cc, *c;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
-  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
-  if ((file = fopen(filepath, "r"))) {
-    fclose(file);
-    spawnsh("echo 'dwm organize already executed!' | dmenu");
+  Window w_ret;
+  int current_x, current_y;
+  int win_x, win_y;
+  int browser_x, browser_y;
+  unsigned int mask_ret;
+
+  /* get current x, y mouse pointer */
+  if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &current_x, &current_y, &win_x, &win_y, &mask_ret)) {
     return;
   }
 
-  /* organize tags after reload */
-  putkeeptags();
-
-  /* set fmfact for all monitors */
-  putfilemfact();
-
-  /* go to latest monitor current tag */
-  putcurtag();
-
-  /* set as master to latest current master window */
-  putcurmaster();
-
-  /* focus to latest current window */
-  putcurwin();
-
- sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
- if (!(file = fopen(filepath, "w+"))) {
-   debug("can't create file %s", filepath);
- }
- fclose(file);
+  cc = selmon->sel;
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      if (strcmp(getwindowclass(c->win), arg->v) == 0 || (strcmp(defbrowser, arg->v) == 0)) {
+        focus(c);
+        browser_x = c->x + (c->w / 2);
+        browser_y = c->y + (c->h / 2);
+        XWarpPointer(dpy, None, root, 0, 0, 0, 0, browser_x, browser_y);
+        fakepresskey(c->win, "ControlMask", "r");
+        XWarpPointer(dpy, None, root, 0, 0, 0, 0, current_x, current_y);
+        focus(cc);
+        return;
+      }
+    }
+  }
 }
 
-void reloaddwm(const Arg * arg)
+void reloaddwm(const Arg *arg)
 {
   writemfact();
   writecurtag();
   writecurmaster();
   writecurwin();
-  savekeeptags();
+  savekeeptags(arg);
   spawnsh("${HOME}/bin/wmreload");
 }
 
-void scratchpadmon(const Arg * arg)
+void savekeeptags(const Arg *arg)
+{
+  Monitor *m;
+  Client *c;
+  FILE *file = NULL;
+  char filepath[256];
+  char *user = getenv("USER");
+  char *tmpdir;
+
+  writemfact();
+  writecurtag();
+  writecurmaster();
+  writecurwin();
+
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
+  remove(filepath);
+
+  sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      fprintf(file, "%d %d %d %d %d %lud %s %s\n", c->mon->num,
+        c->tags, (ismaster(c) == 1) ? 1 : 0, (c == selmon->sel) ? 1 : 0,
+        (c->isfloating) ? 1 : 0, c->win, getwindowclass(c->win), c->name);
+    }
+  }
+  fclose(file);
+}
+
+void scratchpadmon(const Arg *arg)
 {
   Monitor *m;
   Client *c;
@@ -777,8 +675,40 @@ void scratchpadmon(const Arg * arg)
   }
 }
 
+/* put client in master area */
+void setasmaster(Client *c)
+{
+  Client *cc;
+  int nc = 0;
+
+  if (!c || c->isfloating) {
+    return;
+  }
+
+  /* check if has more than 1 client */
+  for (cc = selmon->clients; cc && nc < 2; cc = cc->next) {
+      if (ISVISIBLE(cc) && !cc->isfloating) {
+        nc++;
+      }
+  }
+  if (nc >= 2) {
+    pop(c);
+  }
+}
+
+/* set client windowclass */
+int setwindownameclass(Window w, char *sn, char *sc)
+{
+  XClassHint ch = { NULL, NULL };
+
+  ch.res_name = sn;
+  ch.res_class = sc;
+
+  return XSetClassHint(dpy, w, &ch);
+}
+
 /* http://permalink.gmane.org/gmane.comp.misc.suckless/8087 */
-void showurgent(const Arg * arg)
+void showurgent(const Arg *arg)
 {
   Monitor *m;
   Client *c;
@@ -802,7 +732,197 @@ void showurgent(const Arg * arg)
   }
 }
 
-void zoomlast(const Arg * arg)
+/* exec shell command */
+void spawnsh(const char *cmd)
+{
+  const char *shcmd[] = { "/bin/sh", "-c", cmd, NULL };
+  Arg a = {.v = shcmd };
+
+  spawn(&a);
+}
+
+void toggleborder(const Arg *arg)
+{
+  Client *c = selmon->sel;
+  XWindowChanges wc;
+
+  if (!c) {
+    return;
+  }
+
+  if (c->bw) {
+    c->oldbw = c->bw;
+    c->bw = 0;
+  } else {
+    c->bw = c->oldbw;
+  }
+  wc.border_width = c->bw;
+  XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
+}
+
+void togglefullscr(const Arg *arg)
+{
+  if (!selmon->sel) {
+    return;
+  }
+
+  setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
+}
+
+void togglemousecursor(const Arg *arg)
+{
+  Window w_ret;
+  int root_x, root_y;
+  int win_x, win_y;
+  unsigned int mask_ret;
+  /* pointer position to "hide" */
+  int pointer_x = selmon->mx + 5;
+  int pointer_y = 0;
+  /* position */
+  static int root_x_pos = 0;
+  static int root_y_pos = 0;
+
+  /* only if bar is on */
+  if (!selmon->showbar) {
+    return;
+  }
+
+  /* get current x, y mouse pointer */
+  if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &root_x, &root_y, &win_x, &win_y, &mask_ret)) {
+    return;
+  }
+
+  /* toggle mouse pointer position */
+  if (root_y == 0 && root_x == pointer_x) {
+    XWarpPointer(dpy, None, root, 0, 0, 0, 0, root_x_pos, root_y_pos);
+  } else {
+    root_x_pos = root_x;
+    root_y_pos = root_y;
+    XWarpPointer(dpy, None, root, 0, 0, 0, 0, pointer_x, pointer_y);
+  }
+}
+
+void writecurmaster(void)
+{
+  FILE *file;
+  Monitor *m;
+  Client *c;
+  char filepath[256];
+  char *user = getenv("USER");
+  char *tmpdir;
+
+  if (!selmon->sel || selmon->sel->isfloating) {
+    return;
+  }
+
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+
+  /* get the first master on each monitor */
+  for (m = mons; m; m = m->next) {
+    c = nexttiled(m->clients);
+    if (c) {
+      fprintf(file, "%d %lud\n", c->mon->num, c->win);
+    }
+  }
+  fclose(file);
+}
+
+void writecurtag(void)
+{
+  FILE *file;
+  Monitor *m;
+  char filepath[256];
+  char *user = getenv("USER");
+  char *tmpdir;
+
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
+  file = fopen(filepath, "w+");
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+
+  for (m = mons; m; m = m->next) {
+    fprintf(file, "%d %d\n", m->num, m->tagset[m->seltags]);
+  }
+  fclose(file);
+}
+
+void writecurwin(void)
+{
+  FILE *file;
+  char filepath[256];
+  char *user = getenv("USER");
+  char *tmpdir;
+
+  if (!selmon->sel) {
+    return;
+  }
+
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+  fprintf(file, "%d %lud\n", selmon->num, selmon->sel->win);
+  fclose(file);
+}
+
+void writemfact(void)
+{
+  FILE *file;
+  char filepath[256];
+  char *user = getenv("USER");
+  char *tmpdir;
+  Monitor *m;
+
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+
+  for (m = mons; m; m = m->next) {
+    fprintf(file, "%d %.2f\n", m->num, m->mfact);
+  }
+  fclose(file);
+}
+
+void zoomfirst(const Arg *arg)
+{
+  Client *c;
+
+  if (!selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating) {
+    return;
+  }
+
+  for (c = selmon->sel; c->next; c = c->next) {
+    ;
+  }
+  detach(selmon->sel);
+  selmon->sel->next = NULL;
+  c->next = selmon->sel;
+  focusmaster(arg);
+  arrange(selmon);
+}
+
+void zoomlast(const Arg *arg)
 {
   Client *c;
   Client *cl;
@@ -822,88 +942,8 @@ void zoomlast(const Arg * arg)
   }
 }
 
-void zoomfirst(const Arg * arg)
-{
-  Client *c;
-
-  if (!selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating) {
-    return;
-  }
-
-  for (c = selmon->sel; c->next; c = c->next) {
-    ;
-  }
-  detach(selmon->sel);
-  selmon->sel->next = NULL;
-  c->next = selmon->sel;
-  focusmaster(arg);
-  arrange(selmon);
-}
-
-void focusclient(const Arg * arg)
-{
-  Arg a;
-  Monitor *m;
-  Client *c;
-
-  for (m = mons; m; m = m->next) {
-    for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindowclass(c->win), arg->v) == 0) {
-        if (m != selmon) {
-          unfocus(selmon->sel, True);
-          selmon = c->mon;
-        }
-        a.ui = c->tags;
-        view(&a);
-        focus(c);
-        arrange(c->mon);
-        return;
-      }
-    }
-  }
-}
-
-void reloadbrowser(const Arg * arg)
-{
-  Monitor *m;
-  Client *cc, *c;
-
-  Window w_ret;
-  int current_x, current_y;
-  int win_x, win_y;
-  int browser_x, browser_y;
-  unsigned int mask_ret;
-
-  /* get current x, y mouse pointer */
-  if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &current_x, &current_y, &win_x, &win_y, &mask_ret)) {
-    return;
-  }
-
-  cc = selmon->sel;
-  for (m = mons; m; m = m->next) {
-    for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindowclass(c->win), arg->v) == 0 || (strcmp(defbrowser, arg->v) == 0)) {
-        focus(c);
-        browser_x = c->x + (c->w / 2);
-        browser_y = c->y + (c->h / 2);
-        XWarpPointer(dpy, None, root, 0, 0, 0, 0, browser_x, browser_y);
-        fakepresskey(c->win, "ControlMask", "r");
-        XWarpPointer(dpy, None, root, 0, 0, 0, 0, current_x, current_y);
-        focus(cc);
-        return;
-      }
-    }
-  }
-}
-
-void focusmonmaster(const Arg * arg)
-{
-  focusmon(arg);
-  focusmaster(arg);
-}
-
 /* zoom/cycles monitors */
-void zoommon(const Arg * arg)
+void zoommon(const Arg *arg)
 {
   Monitor *m;
   Monitor *m1 = NULL;

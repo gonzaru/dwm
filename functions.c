@@ -1,5 +1,5 @@
 /*
- * By Gonzaru
+ * by Gonzaru
  * My customized functions to add dwm functionality without patching dwm.c
  * Distributed under the terms of the GNU General Public License v3
  */

@@ -1,5 +1,5 @@
 /*
- * By Gonzaru
+ * by Gonzaru
  * Distributed under the terms of the GNU General Public License v3
  */
 
@@ -8,7 +8,7 @@
 
 /* some custom colors & themes */
 #if 1
-#include "themes/themes.h"
+#include "themes.h"
 #endif
 
 /* appearance */
@@ -58,7 +58,7 @@ static const int nmaster     = 1;    /* number of clients in master area */
 static const int resizehints = 0;    /* 1 means respect size hints in tiled resizals */
 
 /* custom functions */
-#include "patches/functions.c"
+#include "functions.c"
 
 static const Layout layouts[] = {
   /* symbol     arrange function */

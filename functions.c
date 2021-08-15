@@ -1,8 +1,9 @@
 /*
  * by Gonzaru
- * My customized functions to add dwm functionality without patching dwm.c
  * Distributed under the terms of the GNU General Public License v3
  */
+
+/* My customized functions to add dwm functionality without patching dwm.c */
 
 /* global macros */
 #define FIRST_TAG  1 << 0

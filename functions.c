@@ -72,14 +72,11 @@ void fakepresskey(Window win, char *typemask, char *strkey)
 
   if (strcmp(typemask, "ControlMask") == 0) {
     ev.xkey.state = ControlMask;
-  }
-  if (strcmp(typemask, "ShiftMask") == 0) {
+  } else if (strcmp(typemask, "ShiftMask") == 0) {
     ev.xkey.state = ShiftMask;
-  }
-  if (strcmp(typemask, "Mod1Mask") == 0) {
+  } else if (strcmp(typemask, "Mod1Mask") == 0) {
     ev.xkey.state = Mod1Mask;
-  }
-  if (strcmp(typemask, "Mod4Mask") == 0) {
+  } else if (strcmp(typemask, "Mod4Mask") == 0) {
     ev.xkey.state = Mod4Mask;
   }
 
@@ -90,14 +87,14 @@ void fakepresskey(Window win, char *typemask, char *strkey)
   ev.xkey.type = KeyPress;
   XSendEvent(dpy, win, True, KeyPressMask, &ev);
   XFlush(dpy);
-  /* 100ms to not ignore xsendevent... */
+  /* 100ms don't ignore XSendEvent() */
   usleep(100000);
 
   /* release */
   ev.xkey.type = KeyRelease;
   XSendEvent(dpy, win, True, KeyReleaseMask, &ev);
   XFlush(dpy);
-  /* 100ms to not ignore xsendevent... */
+  /* 100ms don't ignore XSendEvent() */
   usleep(100000);
 }
 
@@ -172,7 +169,6 @@ char *getwindowclass(Window w)
   XClassHint ch = { NULL, NULL };
 
   XGetClassHint(dpy, w, &ch);
-
   return ch.res_class;
 }
 
@@ -182,7 +178,6 @@ char *getwindowname(Window w)
   XClassHint ch = { NULL, NULL };
 
   XGetClassHint(dpy, w, &ch);
-
   return ch.res_name;
 }
 
@@ -196,7 +191,6 @@ int ismaster(Client *c)
   }
 
   cm = nexttiled(c->mon->clients);
-
   return (cm == c) ? 1 : 0;
 }
 
@@ -248,11 +242,13 @@ void organize(const Arg *arg)
   /* focus to latest current window */
   putcurwin();
 
- sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
- if (!(file = fopen(filepath, "w+"))) {
-   debug("can't create file %s", filepath);
- }
- fclose(file);
+  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+
+  fclose(file);
 }
 
 void pressmousecursor(const Arg *arg)
@@ -704,7 +700,6 @@ int setwindownameclass(Window w, char *sn, char *sc)
 
   ch.res_name = sn;
   ch.res_class = sc;
-
   return XSetClassHint(dpy, w, &ch);
 }
 
@@ -878,6 +873,7 @@ void writecurwin(void)
     debug("can't create file %s", filepath);
     return;
   }
+
   fprintf(file, "%d %lud\n", selmon->num, selmon->sel->win);
   fclose(file);
 }
@@ -972,13 +968,11 @@ void zoommon(const Arg *arg)
   /* get current tagset */
   m1_tagset = m1->tagset[m1->seltags];
   m2_tagset = m2->tagset[m2->seltags];
-
   for (i = 0, m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next, i++) {
       ac[i] = c->win;
     }
   }
-
   for (i = (sizeof(ac) / sizeof(int)) - 1; i >= 0; i--) {
     if (ac[i]) {
       for (m = mons; m; m = m->next) {
@@ -998,7 +992,6 @@ void zoommon(const Arg *arg)
       }
     }
   }
-
   /* swap previous tagset */
   m1->tagset[m1->seltags] = m2_tagset;
   m2->tagset[m2->seltags] = m1_tagset;

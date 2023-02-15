@@ -16,3 +16,14 @@
     $ cd /path/to/dwm
     $ make clean
     $ make
+
+#### 4. Install (optional)
+
+    # copy the binary file to any searchable shell $PATH, for example:
+    $ sudo cp dwm /usr/local/bin/
+
+* Or
+
+```
+$ make install (use sudo if necessary)
+```

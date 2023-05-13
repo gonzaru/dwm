@@ -126,6 +126,8 @@ static Key keys[] = {
   /* MY MODKEYS */
   { MODKEY,                         XK_bracketleft,  zoomlast,           {0} },
   { MODKEY,                         XK_bracketright, zoomfirst,          {0} },
+  { MODKEY|ShiftMask,               XK_j,            stackdown,          {0} },
+  { MODKEY|ShiftMask,               XK_k,            stackup,            {0} },
   { MODKEY|ShiftMask,               XK_Escape,       spawn,              SHCMD("xkill") },
   { MODKEY|ShiftMask|ControlMask,   XK_Escape,       spawn,              SHCMD("wmkill") },
   { MODKEY|ShiftMask,               XK_p,            spawn,              SHCMD("gmrun") },

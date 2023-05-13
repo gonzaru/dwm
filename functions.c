@@ -40,6 +40,8 @@ void setasmaster(Client *c);
 int setwindownameclass(Window w, char *sn, char *sc);
 void showurgent(const Arg *arg);
 void spawnsh(const char *cmd);
+void stackdown(const Arg *arg);
+void stackup(const Arg *arg);
 void toggleborder(const Arg *arg);
 void togglefullscr(const Arg *arg);
 void togglemousecursor(const Arg *arg);
@@ -735,6 +737,50 @@ void spawnsh(const char *cmd)
   Arg a = {.v = shcmd };
 
   spawn(&a);
+}
+
+/* move stack down */
+void stackdown(const Arg *arg) {
+  Client *c;
+
+  if (!selmon->sel || selmon->sel->isfloating || ismaster(selmon->sel)) {
+    return;
+  }
+
+  c = nexttiled(selmon->sel->next);
+  if (c) {
+    detach(selmon->sel);
+    selmon->sel->next = c->next;
+    c->next = selmon->sel;
+    focus(selmon->sel);
+    arrange(selmon);
+  }
+}
+
+/* move stack up */
+void stackup(const Arg *arg) {
+  Client *c, *p;
+
+  if (!selmon->sel || selmon->sel->isfloating || ismaster(selmon->sel)) {
+    return;
+  }
+
+  c = NULL;
+  for (p = selmon->clients; p && p != selmon->sel; p = p->next) {
+    if (!p->isfloating && ISVISIBLE(p)) {
+      c = p;
+    }
+  }
+  if (c && !ismaster(c)) {
+    detach(selmon->sel);
+    selmon->sel->next = c;
+    for (c = selmon->clients; c->next != selmon->sel->next; c = c->next) {
+      ;
+    }
+    c->next = selmon->sel;
+    focus(selmon->sel);
+    arrange(selmon);
+  }
 }
 
 void toggleborder(const Arg *arg)

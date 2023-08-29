@@ -5,7 +5,7 @@
 
 /* custom colors */
 #define BLACK                   "#000000"
-#define WHITE5                   "#FFFFFF"
+#define WHITE6                   "#FFFFFF"
 #define RED                     "#FF0000"
 #define DARK_RED                "#8B0000"
 #define CYAN                    "#00FFFF"

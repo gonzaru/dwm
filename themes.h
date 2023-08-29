@@ -5,7 +5,7 @@
 
 /* custom colors */
 #define BLACK                   "#000000"
-#define BLACK2                  "#000000"
+#define BLACK3                  "#000000"
 #define WHITE                   "#FFFFFF"
 #define RED                     "#FF0000"
 #define DARK_RED                "#8B0000"

@@ -638,7 +638,7 @@ void scratchpadmon(const Arg *arg)
 {
   Monitor *m;
   Client *c;
-  const char *scratchcmd = "xterm -u8 -class 'Scratchpad'";
+  const char *scratchcmd = arg->v;
   int match = 0;
 
   for (m = mons; m; m = m->next) {
@@ -739,7 +739,7 @@ void spawnsh(const char *cmd)
   spawn(&a);
 }
 
-/* move stack down */
+/* move the client stack down */
 void stackdown(const Arg *arg) {
   Client *c;
 
@@ -757,7 +757,7 @@ void stackdown(const Arg *arg) {
   }
 }
 
-/* move stack up */
+/* move the client up from the stack */
 void stackup(const Arg *arg) {
   Client *c, *p;
 

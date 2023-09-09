@@ -34,6 +34,9 @@ static const char *colors[][3] = {
 /* browser for maps like focus/reload */
 static const char defbrowser[] = "Chromium-browser";
 
+/* default scratch application */
+static const char defscratchapp[] = "xterm -u8 -class 'Scratchpad'";
+
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
@@ -124,21 +127,21 @@ static Key keys[] = {
   /* END DEFAULTS */
 
   /* MY MODKEYS */
-  { MODKEY,                         XK_bracketleft,  zoomlast,           {0} },
-  { MODKEY,                         XK_bracketright, zoomfirst,          {0} },
+  { MODKEY,                         XK_bracketleft,  zoomfirst,          {0} },
+  { MODKEY,                         XK_bracketright, zoomlast,           {0} },
   { MODKEY|ShiftMask,               XK_j,            stackdown,          {0} },
   { MODKEY|ShiftMask,               XK_k,            stackup,            {0} },
   { MODKEY|ShiftMask,               XK_Escape,       spawn,              SHCMD("xkill") },
   { MODKEY|ShiftMask|ControlMask,   XK_Escape,       spawn,              SHCMD("wmkill") },
   { MODKEY|ShiftMask,               XK_p,            spawn,              SHCMD("gmrun") },
   { MODKEY|ShiftMask|ControlMask,   XK_p,            spawn,              SHCMD("wmmenu") },
-  { MODKEY|ControlMask,             XK_Return,       scratchpadmon,      {0} },
+  { MODKEY|ControlMask,             XK_Return,       scratchpadmon,      {.v = defscratchapp} },
   { MODKEY|ShiftMask|ControlMask,   XK_Return,       zoommon,            {0} },
   { MODKEY|ControlMask,             XK_bracketleft,  spawn,              SHCMD("primary2clipboard") },
   { MODKEY|ControlMask,             XK_bracketright, spawn,              SHCMD("clipboard2primary") },
   { MODKEY|ShiftMask|ControlMask,   XK_bracketleft,  spawn,              SHCMD("xclip -o | dmenu -l 25") },
   { MODKEY|ShiftMask|ControlMask,   XK_bracketright, spawn,              SHCMD("xclip -o -selection clipboard | dmenu -l 25") },
-  { MODKEY,                         XK_F9,           spawn,              SHCMD("volume toggle && wmbarupdate") },
+  { MODKEY,                         XK_F10,          spawn,              SHCMD("volume toggle && wmbarupdate") },
   { MODKEY,                         XK_F11,          spawn,              SHCMD("volume down && wmbarupdate") },
   { MODKEY,                         XK_F12,          spawn,              SHCMD("volume up && wmbarupdate") },
   { MODKEY|ControlMask,             XK_s,            spawn,              SHCMD("slock") },

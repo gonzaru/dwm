@@ -35,7 +35,7 @@ static const char *colors[][3] = {
 static const char defbrowser[] = "Chromium-browser";
 
 /* default scratch application */
-static const char defscratchapp[] = "xterm -u8 -class 'Scratchpad'";
+static const char *defscratchapp[] = { "xterm -u8 -class 'Scratchpad'", "Scratchpad", NULL };
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };

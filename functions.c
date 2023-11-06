@@ -638,33 +638,29 @@ void scratchpadmon(const Arg *arg)
 {
   Monitor *m;
   Client *c;
-  const char *scratchcmd = arg->v;
+  const char *scratchcmd = ((char **)arg->v)[0];
+  const char *scratchclass = ((char **)arg->v)[1];
   int match = 0;
 
-  for (m = mons; m; m = m->next) {
-    for (c = m->clients; c; c = c->next) {
-      if (strcmp("Scratchpad", getwindowclass(c->win)) == 0) {
+  for (m = mons; m && !match; m = m->next) {
+    for (c = m->clients; c && !match; c = c->next) {
+      if (strcmp(scratchclass, getwindowclass(c->win)) == 0) {
         match = 1;
-        if (m != selmon) {
+        if (c->mon != selmon) {
           sendmon(c, selmon);
           arrange(c->mon);
           setasmaster(c);
+        } else if (!ISVISIBLE(c)) {
+          c->tags = selmon->tagset[selmon->seltags];
+          arrange(c->mon);
+          setasmaster(c);
+        } else if (c == selmon->sel && c->tags != SCRATCH_TAG) {
+          c->tags = SCRATCH_TAG;
+          arrange(c->mon);
+          focus(NULL);
         } else {
-          if (!ISVISIBLE(c)) {
-            c->tags = selmon->tagset[selmon->seltags];
-            arrange(c->mon);
-            setasmaster(c);
-          } else {
-            if (c->tags != SCRATCH_TAG && c == selmon->sel) {
-              c->tags = SCRATCH_TAG;
-              arrange(c->mon);
-              focus(NULL);
-            } else {
-              setasmaster(c);
-            }
-          }
+          setasmaster(c);
         }
-        return;
       }
     }
   }

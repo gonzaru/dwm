@@ -34,8 +34,9 @@ static const char *colors[][3] = {
 /* browser for maps like focus/reload */
 static const char defbrowser[] = "Chromium-browser";
 
-/* default scratch application */
-static const char *defscratchapp[] = { "xterm -u8 -class 'Scratchpad'", "Scratchpad", NULL };
+/* default scratch applications */
+static const char *defscratchappdyn[] = { NULL, "Scratchpaddyn", NULL };
+static const char *defscratchapp1[] = { "xterm -u8 -class 'Scratchpad1'", "Scratchpad1", NULL };
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
@@ -135,7 +136,10 @@ static Key keys[] = {
   { MODKEY|ShiftMask|ControlMask,   XK_Escape,       spawn,              SHCMD("wmkill") },
   { MODKEY|ShiftMask,               XK_p,            spawn,              SHCMD("gmrun") },
   { MODKEY|ShiftMask|ControlMask,   XK_p,            spawn,              SHCMD("wmmenu") },
-  { MODKEY|ControlMask,             XK_Return,       scratchpadmon,      {.v = defscratchapp} },
+  { MODKEY|ControlMask,             XK_Return,       scratchpadmon,      {.v = defscratchapp1} },
+  { MODKEY|ControlMask,             XK_i,            setscratchpad,      {.v = defscratchappdyn} },
+  { MODKEY|ShiftMask|ControlMask,   XK_i,            unsetscratchpad,    {.v = defscratchappdyn} },
+  { MODKEY|ControlMask,             XK_o,            scratchpadmon,      {.v = defscratchappdyn },
   { MODKEY|ShiftMask|ControlMask,   XK_Return,       zoommon,            {0} },
   { MODKEY|ControlMask,             XK_bracketleft,  spawn,              SHCMD("primary2clipboard") },
   { MODKEY|ControlMask,             XK_bracketright, spawn,              SHCMD("clipboard2primary") },

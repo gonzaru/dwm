@@ -6,8 +6,10 @@
 /* My customized functions to add dwm functionality without patching dwm.c */
 
 /* global macros */
+#define FILE_SIZE 256
 #define FIRST_TAG  1 << 0
 #define LAST_TAG   1 << (LENGTH(tags) - 1)
+#define LINE_SIZE 256
 #define SCRATCH_TAG 1 << 7
 
 /* default temporary directory path */
@@ -36,6 +38,8 @@ void reloadbrowser(const Arg *arg);
 void reloaddwm(const Arg *arg);
 void savekeeptags(const Arg *arg);
 void scratchpadmon(const Arg *arg);
+void setscratchpad(const Arg *arg);
+void unsetscratchpad(const Arg *arg);
 void setasmaster(Client *c);
 int setwindownameclass(Window w, char *sn, char *sc);
 void showurgent(const Arg *arg);
@@ -49,6 +53,7 @@ void writecurmaster(void);
 void writecurtag(void);
 void writecurwin(void);
 void writemfact(void);
+void writenameclass(Client *c);
 void zoomfirst(const Arg *arg);
 void zoomlast(const Arg *arg);
 void zoommon(const Arg *arg);
@@ -215,7 +220,7 @@ void nexttag(const Arg *arg)
 void organize(const Arg *arg)
 {
   FILE *file = NULL;
-  char filepath[256];
+  char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
 
@@ -335,8 +340,8 @@ void prevtag(const Arg *arg)
 void putcurmaster(void)
 {
   FILE *file;
-  char filepath[256];
-  char line[256];
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
   Monitor *m;
@@ -378,8 +383,8 @@ void putcurmaster(void)
 void putcurtag(void)
 {
   FILE *file;
-  char filepath[256];
-  char line[256];
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
   Monitor *m;
@@ -422,8 +427,8 @@ void putcurtag(void)
 void putcurwin(void)
 {
   FILE *file;
-  char filepath[256];
-  char line[256];
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
   Arg a;
@@ -470,8 +475,8 @@ void putfilemfact(const Arg *arg)
 {
   Monitor *m;
   FILE *file;
-  char filepath[256];
-  char line[256];
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
   int fmon;
@@ -506,8 +511,8 @@ void putkeeptags(void)
   Monitor *m;
   Client *c;
   FILE *file;
-  char filepath[256];
-  char line[256];
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
   int fmon;
@@ -603,7 +608,7 @@ void savekeeptags(const Arg *arg)
   Monitor *m;
   Client *c;
   FILE *file = NULL;
-  char filepath[256];
+  char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
 
@@ -630,6 +635,61 @@ void savekeeptags(const Arg *arg)
         c->tags, (ismaster(c) == 1) ? 1 : 0, (c == selmon->sel) ? 1 : 0,
         (c->isfloating) ? 1 : 0, c->win, getwindowclass(c->win), c->name);
     }
+  }
+  fclose(file);
+}
+
+void setscratchpad(const Arg *arg) {
+  Monitor *m;
+  Client *c;
+  char *scratchclass = ((char **)arg->v)[1];
+
+  if (!selmon->sel) {
+    return;
+  }
+
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      if (strcmp(scratchclass, getwindowclass(c->win)) == 0) {
+        spawnsh("echo 'cannot create a new dynamic scratch, already exists!' | dmenu");
+        return;
+      }
+    }
+  }
+  writenameclass(selmon->sel);
+  setwindownameclass(selmon->sel->win, scratchclass, scratchclass);
+}
+
+void unsetscratchpad(const Arg *arg) {
+  FILE *file;
+  char *scratchclass = ((char **)arg->v)[1];
+  char *tmpdir;
+  char *user = getenv("USER");
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
+  char prevscratchclass[FILE_SIZE];
+  char prevscratchname[FILE_SIZE];
+
+  if (!selmon->sel) {
+    return;
+  }
+
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  sprintf(filepath, "%s/%s-dwm-nameclass.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "r"))) {
+    debug("can't open file %s", filepath);
+    return;
+  }
+
+  if (strcmp(scratchclass, getwindowclass(selmon->sel->win)) == 0) {
+    if (fgets(line, sizeof line - 1, file)) {
+      sscanf(line, "%s %s", prevscratchname, prevscratchclass);
+      setwindownameclass(selmon->sel->win, prevscratchname, prevscratchclass);
+    }
+  } else {
+    spawnsh("echo 'this is not a dynamic scratch!' | dmenu");
   }
   fclose(file);
 }
@@ -665,7 +725,7 @@ void scratchpadmon(const Arg *arg)
     }
   }
   /* launch it if not present */
-  if (!match) {
+  if (!match && scratchcmd) {
     spawnsh(scratchcmd);
   }
 }
@@ -845,7 +905,7 @@ void writecurmaster(void)
   FILE *file;
   Monitor *m;
   Client *c;
-  char filepath[256];
+  char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
 
@@ -876,7 +936,7 @@ void writecurtag(void)
 {
   FILE *file;
   Monitor *m;
-  char filepath[256];
+  char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
 
@@ -899,7 +959,7 @@ void writecurtag(void)
 void writecurwin(void)
 {
   FILE *file;
-  char filepath[256];
+  char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
 
@@ -923,7 +983,7 @@ void writecurwin(void)
 void writemfact(void)
 {
   FILE *file;
-  char filepath[256];
+  char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir;
   Monitor *m;
@@ -940,6 +1000,30 @@ void writemfact(void)
   for (m = mons; m; m = m->next) {
     fprintf(file, "%d %.2f\n", m->num, m->mfact);
   }
+  fclose(file);
+}
+
+void writenameclass(Client *c)
+{
+  FILE *file;
+  char *tmpdir;
+  char *user = getenv("USER");
+  char filepath[FILE_SIZE];
+
+  if (!c) {
+    return;
+  }
+
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  sprintf(filepath, "%s/%s-dwm-nameclass.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+
+  fprintf(file, "%s %s\n", getwindowname(c->win), getwindowclass(c->win));
   fclose(file);
 }
 

@@ -22,6 +22,7 @@ void focusclient(const Arg *arg);
 void focuslast(const Arg *arg);
 void focusmaster(const Arg *arg);
 void focusmonmaster(const Arg *arg);
+char *gettmpdir(void);
 char *getwindowclass(Window w);
 char *getwindowname(Window w);
 int ismaster(Client *c);
@@ -170,6 +171,17 @@ void focusmonmaster(const Arg *arg)
   focusmaster(arg);
 }
 
+/* get tmpdir */
+char *gettmpdir(void)
+{
+  char *tmpdir;
+
+  if (!(tmpdir = getenv("TMPDIR"))) {
+    tmpdir = DEFAULT_TMPDIR;
+  }
+  return tmpdir;
+}
+
 /* get client window class */
 char *getwindowclass(Window w)
 {
@@ -224,9 +236,7 @@ void organize(const Arg *arg)
   char *user = getenv("USER");
   char *tmpdir;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
   if ((file = fopen(filepath, "r"))) {
     fclose(file);
@@ -254,7 +264,6 @@ void organize(const Arg *arg)
     debug("can't create file %s", filepath);
     return;
   }
-
   fclose(file);
 }
 
@@ -349,9 +358,7 @@ void putcurmaster(void)
   int fmon;
   long unsigned int fwin;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
@@ -392,9 +399,7 @@ void putcurtag(void)
   int ftag;
   Arg a;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
@@ -437,9 +442,7 @@ void putcurwin(void)
   int fmon;
   long unsigned int fwin;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
@@ -482,9 +485,7 @@ void putfilemfact(const Arg *arg)
   int fmon;
   float fmfact;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
@@ -522,9 +523,7 @@ void putkeeptags(void)
   int ffloating;
   long unsigned int fwin;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
@@ -617,9 +616,7 @@ void savekeeptags(const Arg *arg)
   writecurmaster();
   writecurwin();
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
   remove(filepath);
 
@@ -674,9 +671,7 @@ void unsetscratchpad(const Arg *arg) {
     return;
   }
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-nameclass.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
@@ -913,9 +908,7 @@ void writecurmaster(void)
     return;
   }
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
@@ -940,9 +933,7 @@ void writecurtag(void)
   char *user = getenv("USER");
   char *tmpdir;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
   file = fopen(filepath, "w+");
   if (!(file = fopen(filepath, "w+"))) {
@@ -967,9 +958,7 @@ void writecurwin(void)
     return;
   }
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
@@ -988,9 +977,7 @@ void writemfact(void)
   char *tmpdir;
   Monitor *m;
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
@@ -1014,9 +1001,7 @@ void writenameclass(Client *c)
     return;
   }
 
-  if (!(tmpdir = getenv("TMPDIR"))) {
-    tmpdir = DEFAULT_TMPDIR;
-  }
+  tmpdir = gettmpdir();
   sprintf(filepath, "%s/%s-dwm-nameclass.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);

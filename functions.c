@@ -754,6 +754,7 @@ int setwindownameclass(Window w, char *sn, char *sc)
 void showapps(const Arg *arg)
 {
   Arg a;
+  Arg b;
   Monitor *m;
   Client *c;
   FILE *file = NULL;
@@ -765,7 +766,7 @@ void showapps(const Arg *arg)
   char cmd[sizeof filepath1 + sizeof filepath2 + 15]; /* 15 dmenu */
   int nclients = 0;
 
-  sprintf(filepath1, "%s/%s-dwm-showapps.txt", tmpdir, user);
+  sprintf(filepath1, "%s/%s-dwm-showapps-list.txt", tmpdir, user);
   if (!(file = fopen(filepath1, "w+"))) {
     debug("can't create file %s", filepath1);
     return;
@@ -778,14 +779,23 @@ void showapps(const Arg *arg)
   }
   fclose(file);
 
-  sprintf(filepath2, "%s/%s-dwm-focusapp.txt", tmpdir, user);
+  sprintf(filepath2, "%s/%s-dwm-showapps-select.txt", tmpdir, user);
   snprintf(cmd, sizeof cmd, "dmenu -l %d < %s > %s", nclients, filepath1, filepath2);
   if (system(cmd) && (file = fopen(filepath2, "r"))) {
     if (fgets(line, sizeof line - 1, file)) {
       /* remove '\n' from fgets */
       line[strcspn(line, "\n")] = '\0';
       a.v = line;
-      focusclient(&a);
+      if (strcmp(arg->v, "focus") == 0) {
+        focusclient(&a);
+      } else if (strcmp(arg->v, "kill") == 0) {
+        b.v = getwindowclass(selmon->sel->win);
+        focusclient(&a);
+        if (strcmp(a.v, getwindowclass(selmon->sel->win)) == 0) {
+          killclient(&a);
+        }
+        focusclient(&b);
+      }
     }
     fclose(file);
   }

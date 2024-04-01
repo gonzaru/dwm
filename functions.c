@@ -25,6 +25,7 @@ void focusmonmaster(const Arg *arg);
 char *gettmpdir(void);
 char *getwindowclass(Window w);
 char *getwindowname(Window w);
+int getwindowid(const Arg *arg);
 int ismaster(Client *c);
 void nexttag(const Arg *arg);
 void organize(const Arg *arg);
@@ -200,6 +201,21 @@ char *getwindowname(Window w)
 
   XGetClassHint(dpy, w, &ch);
   return ch.res_name;
+}
+
+/* get client window id from window class */
+int getwindowid(const Arg *arg) {
+  Monitor *m;
+  Client *c;
+
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      if (strcmp(getwindowclass(c->win), arg->v) == 0) {
+        return c->win;
+      }
+    }
+  }
+  return 0;
 }
 
 /* check if client is master */
@@ -754,7 +770,6 @@ int setwindownameclass(Window w, char *sn, char *sc)
 void showapps(const Arg *arg)
 {
   Arg a;
-  Arg b;
   Monitor *m;
   Client *c;
   FILE *file = NULL;
@@ -765,6 +780,7 @@ void showapps(const Arg *arg)
   char line[LINE_SIZE];
   char cmd[sizeof filepath1 + sizeof filepath2 + 15]; /* 15 dmenu */
   int nclients = 0;
+  int winid = 0;
 
   sprintf(filepath1, "%s/%s-dwm-showapps-list.txt", tmpdir, user);
   if (!(file = fopen(filepath1, "w+"))) {
@@ -789,12 +805,10 @@ void showapps(const Arg *arg)
       if (strcmp(arg->v, "focus") == 0) {
         focusclient(&a);
       } else if (strcmp(arg->v, "kill") == 0) {
-        b.v = getwindowclass(selmon->sel->win);
-        focusclient(&a);
-        if (strcmp(a.v, getwindowclass(selmon->sel->win)) == 0) {
-          killclient(&a);
+        winid = getwindowid(&a);
+        if (winid) {
+          XKillClient(dpy, winid);
         }
-        focusclient(&b);
       }
     }
     fclose(file);

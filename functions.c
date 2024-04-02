@@ -7,8 +7,8 @@
 
 /* global macros */
 #define FILE_SIZE 256
-#define FIRST_TAG  1 << 0
-#define LAST_TAG   1 << (LENGTH(tags) - 1)
+#define FIRST_TAG 1 << 0
+#define LAST_TAG 1 << (LENGTH(tags) - 1)
 #define LINE_SIZE 256
 #define SCRATCH_TAG 1 << 7
 
@@ -25,7 +25,8 @@ void focusmonmaster(const Arg *arg);
 char *gettmpdir(void);
 char *getwindowclass(Window w);
 char *getwindowname(Window w);
-int getwindowid(const Arg *arg);
+int getidfromclass(const Arg *arg);
+Client *getclientfromid(int winid);
 int ismaster(Client *c);
 void nexttag(const Arg *arg);
 void organize(const Arg *arg);
@@ -43,6 +44,7 @@ void scratchpadmon(const Arg *arg);
 void setscratchpad(const Arg *arg);
 void unsetscratchpad(const Arg *arg);
 void setasmaster(Client *c);
+void setasmastermon(Client *c);
 int setwindownameclass(Window w, char *sn, char *sc);
 void showapps(const Arg *arg);
 void showurgent(const Arg *arg);
@@ -55,8 +57,8 @@ void togglemousecursor(const Arg *arg);
 void writecurmaster(void);
 void writecurtag(void);
 void writecurwin(void);
-void writemfact(void);
-void writenameclass(Client *c);
+void writecurmfact(void);
+void writeclassname(Client *c);
 void zoomfirst(const Arg *arg);
 void zoomlast(const Arg *arg);
 void zoommon(const Arg *arg);
@@ -71,6 +73,7 @@ void debug(const char *errstr, ...)
   va_end(ap);
 }
 
+/* simulate a key press */
 void fakepresskey(Window win, char *typemask, char *strkey)
 {
   XEvent ev;
@@ -108,7 +111,7 @@ void fakepresskey(Window win, char *typemask, char *strkey)
   usleep(100000);
 }
 
-/* focus client */
+/* focus the client from the window class */
 void focusclient(const Arg *arg)
 {
   Arg a;
@@ -132,7 +135,7 @@ void focusclient(const Arg *arg)
   }
 }
 
-/* focus last client */
+/* focus the last client */
 void focuslast(const Arg *arg)
 {
   Client *c;
@@ -153,7 +156,7 @@ void focuslast(const Arg *arg)
   }
 }
 
-/* focus master */
+/* focus the master client */
 void focusmaster(const Arg *arg)
 {
   Client *c;
@@ -168,13 +171,14 @@ void focusmaster(const Arg *arg)
   }
 }
 
+/* focus the master client (multi monitor) */
 void focusmonmaster(const Arg *arg)
 {
   focusmon(arg);
   focusmaster(arg);
 }
 
-/* get tmpdir */
+/* get the tmpdir */
 char *gettmpdir(void)
 {
   char *tmpdir;
@@ -185,7 +189,7 @@ char *gettmpdir(void)
   return tmpdir;
 }
 
-/* get client window class */
+/* get the client window class */
 char *getwindowclass(Window w)
 {
   XClassHint ch = { NULL, NULL };
@@ -194,7 +198,7 @@ char *getwindowclass(Window w)
   return ch.res_class;
 }
 
-/* get client window name */
+/* get the client window name */
 char *getwindowname(Window w)
 {
   XClassHint ch = { NULL, NULL };
@@ -203,8 +207,9 @@ char *getwindowname(Window w)
   return ch.res_name;
 }
 
-/* get client window id from window class */
-int getwindowid(const Arg *arg) {
+/* get the client window id from the window class */
+int getidfromclass(const Arg *arg)
+{
   Monitor *m;
   Client *c;
 
@@ -218,20 +223,40 @@ int getwindowid(const Arg *arg) {
   return 0;
 }
 
-/* check if client is master */
-int ismaster(Client *c)
+/* get the client from the window id */
+Client *getclientfromid(int winid)
 {
-  Client *cm;
+  Monitor *m;
+  Client *c;
 
-  if (!c || !c->mon->nmaster || c->isfloating) {
+  if (!winid) {
+    return NULL;
+  }
+
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      if (c->win == winid) {
+         return c;
+      }
+    }
+  }
+  return NULL;
+}
+
+/* check if the client is the master */
+int ismaster(Client *cm)
+{
+  Client *c;
+
+  if (!cm || !cm->mon->nmaster || cm->isfloating) {
     return 0;
   }
 
-  cm = nexttiled(c->mon->clients);
-  return (cm == c) ? 1 : 0;
+  c = nexttiled(cm->mon->clients);
+  return (c == cm) ? 1 : 0;
 }
 
-/* next tag */
+/* go to the next tag */
 void nexttag(const Arg *arg)
 {
   Arg a;
@@ -247,6 +272,7 @@ void nexttag(const Arg *arg)
   view(&a);
 }
 
+/* organize the windows */
 void organize(const Arg *arg)
 {
   FILE *file = NULL;
@@ -284,6 +310,7 @@ void organize(const Arg *arg)
   fclose(file);
 }
 
+/* simulate a press mouse */
 void pressmousecursor(const Arg *arg)
 {
   XEvent event;
@@ -347,7 +374,7 @@ void pressmousecursor(const Arg *arg)
   XFlush(dpy);
 }
 
-/* previous tag */
+/* go to the previous tag */
 void prevtag(const Arg *arg)
 {
   Arg a;
@@ -363,6 +390,7 @@ void prevtag(const Arg *arg)
   view(&a);
 }
 
+/* set as master to the latest current master window */
 void putcurmaster(void)
 {
   FILE *file;
@@ -403,6 +431,7 @@ void putcurmaster(void)
   fclose(file);
 }
 
+/* go to latest monitor current tag */
 void putcurtag(void)
 {
   FILE *file;
@@ -444,6 +473,7 @@ void putcurtag(void)
   fclose(file);
 }
 
+/* focus to the latest current window */
 void putcurwin(void)
 {
   FILE *file;
@@ -488,6 +518,7 @@ void putcurwin(void)
   fclose(file);
 }
 
+/* set the fmfact for all monitors */
 void putfilemfact(const Arg *arg)
 {
   Monitor *m;
@@ -519,6 +550,7 @@ void putfilemfact(const Arg *arg)
   fclose(file);
 }
 
+/* organize the tags after reload */
 void putkeeptags(void)
 {
   Arg a;
@@ -571,6 +603,7 @@ void putkeeptags(void)
   arrange(selmon);
 }
 
+/* reload the default browser */
 void reloadbrowser(const Arg *arg)
 {
   Monitor *m;
@@ -604,9 +637,10 @@ void reloadbrowser(const Arg *arg)
   }
 }
 
+/* reload dwm */
 void reloaddwm(const Arg *arg)
 {
-  writemfact();
+  writecurmfact();
   writecurtag();
   writecurmaster();
   writecurwin();
@@ -614,6 +648,7 @@ void reloaddwm(const Arg *arg)
   spawnsh("${HOME}/bin/wmreload");
 }
 
+/* save the tags */
 void savekeeptags(const Arg *arg)
 {
   Monitor *m;
@@ -623,7 +658,7 @@ void savekeeptags(const Arg *arg)
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
-  writemfact();
+  writecurmfact();
   writecurtag();
   writecurmaster();
   writecurwin();
@@ -647,6 +682,7 @@ void savekeeptags(const Arg *arg)
   fclose(file);
 }
 
+/* set the scratchpad */
 void setscratchpad(const Arg *arg) {
   Monitor *m;
   Client *c;
@@ -664,10 +700,11 @@ void setscratchpad(const Arg *arg) {
       }
     }
   }
-  writenameclass(selmon->sel);
+  writeclassname(selmon->sel);
   setwindownameclass(selmon->sel->win, scratchclass, scratchclass);
 }
 
+/* unset the scratchpad */
 void unsetscratchpad(const Arg *arg) {
   FILE *file;
   char *scratchclass = ((char **)arg->v)[1];
@@ -699,6 +736,7 @@ void unsetscratchpad(const Arg *arg) {
   fclose(file);
 }
 
+/* scratchpad (multi monitor) */
 void scratchpadmon(const Arg *arg)
 {
   Monitor *m;
@@ -729,34 +767,64 @@ void scratchpadmon(const Arg *arg)
       }
     }
   }
-  /* launch it if not present */
+  /* run it if not present */
   if (!match && scratchcmd) {
     spawnsh(scratchcmd);
   }
 }
 
-/* put client in master area */
-void setasmaster(Client *c)
+/* put the client in master area */
+void setasmaster(Client *cm)
 {
-  Client *cc;
+  Client *c;
   int nc = 0;
 
-  if (!c || c->isfloating) {
+  if (!cm || cm->isfloating) {
     return;
   }
 
   /* check if has more than 1 client */
-  for (cc = selmon->clients; cc && nc < 2; cc = cc->next) {
-      if (ISVISIBLE(cc) && !cc->isfloating) {
+  for (c = selmon->clients; c && nc < 2; c = c->next) {
+      if (ISVISIBLE(c) && !c->isfloating) {
         nc++;
       }
   }
   if (nc >= 2) {
-    pop(c);
+    pop(cm);
   }
 }
 
-/* set client windowclass */
+/* put the client in the master area (multi monitor) */
+void setasmastermon(Client *cm)
+{
+  Monitor *m;
+  Client *c;
+
+  if (!cm || cm->isfloating) {
+    return;
+  }
+
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      if (c == cm) {
+        if (c->mon != selmon) {
+          sendmon(c, selmon);
+          arrange(c->mon);
+          setasmaster(c);
+        } else if (!ISVISIBLE(c)) {
+          c->tags = selmon->tagset[selmon->seltags];
+          arrange(c->mon);
+          setasmaster(c);
+        } else {
+          setasmaster(c);
+        }
+      }
+      return;
+    }
+  }
+}
+
+/* set the client window class */
 int setwindownameclass(Window w, char *sn, char *sc)
 {
   XClassHint ch = { NULL, NULL };
@@ -766,7 +834,7 @@ int setwindownameclass(Window w, char *sn, char *sc)
   return XSetClassHint(dpy, w, &ch);
 }
 
-/* show apps and focus the selected one */
+/* show the apps and focus/kill/master the selected one */
 void showapps(const Arg *arg)
 {
   Arg a;
@@ -778,7 +846,7 @@ void showapps(const Arg *arg)
   char filepath1[FILE_SIZE];
   char filepath2[FILE_SIZE];
   char line[LINE_SIZE];
-  char cmd[sizeof filepath1 + sizeof filepath2 + 15]; /* 15 dmenu */
+  char cmd[sizeof filepath1 + sizeof filepath2 + 20]; /* 20 dmenu|sort */
   int nclients = 0;
   int winid = 0;
 
@@ -796,7 +864,7 @@ void showapps(const Arg *arg)
   fclose(file);
 
   sprintf(filepath2, "%s/%s-dwm-showapps-select.txt", tmpdir, user);
-  snprintf(cmd, sizeof cmd, "dmenu -l %d < %s > %s", nclients, filepath1, filepath2);
+  snprintf(cmd, sizeof cmd, "sort %s | dmenu -l %d > %s", filepath1, nclients, filepath2);
   if (system(cmd) && (file = fopen(filepath2, "r"))) {
     if (fgets(line, sizeof line - 1, file)) {
       /* remove '\n' from fgets */
@@ -805,17 +873,20 @@ void showapps(const Arg *arg)
       if (strcmp(arg->v, "focus") == 0) {
         focusclient(&a);
       } else if (strcmp(arg->v, "kill") == 0) {
-        winid = getwindowid(&a);
+        winid = getidfromclass(&a);
         if (winid) {
           XKillClient(dpy, winid);
         }
+      } else if (strcmp(arg->v, "master") == 0) {
+        winid = getidfromclass(&a);
+        setasmastermon(getclientfromid(winid));
       }
     }
     fclose(file);
   }
 }
 
-/* http://permalink.gmane.org/gmane.comp.misc.suckless/8087 */
+/* focus the urgent window */
 void showurgent(const Arg *arg)
 {
   Monitor *m;
@@ -849,7 +920,7 @@ void spawnsh(const char *cmd)
   spawn(&a);
 }
 
-/* move the client stack down */
+/* move the client down from the stack */
 void stackdown(const Arg *arg) {
   Client *c;
 
@@ -893,6 +964,7 @@ void stackup(const Arg *arg) {
   }
 }
 
+/* toggle the window border */
 void toggleborder(const Arg *arg)
 {
   Client *c = selmon->sel;
@@ -912,6 +984,7 @@ void toggleborder(const Arg *arg)
   XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
 }
 
+/* toggle to fullscreen */
 void togglefullscr(const Arg *arg)
 {
   if (!selmon->sel) {
@@ -921,6 +994,7 @@ void togglefullscr(const Arg *arg)
   setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
 }
 
+/* toggle the mouse cursor */
 void togglemousecursor(const Arg *arg)
 {
   Window w_ret;
@@ -954,6 +1028,7 @@ void togglemousecursor(const Arg *arg)
   }
 }
 
+/* write the current master window */
 void writecurmaster(void)
 {
   FILE *file;
@@ -983,6 +1058,7 @@ void writecurmaster(void)
   fclose(file);
 }
 
+/* write the current tag */
 void writecurtag(void)
 {
   FILE *file;
@@ -1004,6 +1080,7 @@ void writecurtag(void)
   fclose(file);
 }
 
+/* write the current window */
 void writecurwin(void)
 {
   FILE *file;
@@ -1020,12 +1097,12 @@ void writecurwin(void)
     debug("can't create file %s", filepath);
     return;
   }
-
   fprintf(file, "%d %lud\n", selmon->num, selmon->sel->win);
   fclose(file);
 }
 
-void writemfact(void)
+/* write the current mfact */
+void writecurmfact(void)
 {
   FILE *file;
   char filepath[FILE_SIZE];
@@ -1045,7 +1122,8 @@ void writemfact(void)
   fclose(file);
 }
 
-void writenameclass(Client *c)
+/* write the client window class name */
+void writeclassname(Client *c)
 {
   FILE *file;
   char *user = getenv("USER");
@@ -1056,7 +1134,7 @@ void writenameclass(Client *c)
     return;
   }
 
-  sprintf(filepath, "%s/%s-dwm-nameclass.txt", tmpdir, user);
+  sprintf(filepath, "%s/%s-dwm-classname.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1066,6 +1144,7 @@ void writenameclass(Client *c)
   fclose(file);
 }
 
+/* zoom the first window */
 void zoomfirst(const Arg *arg)
 {
   Client *c;
@@ -1084,6 +1163,7 @@ void zoomfirst(const Arg *arg)
   arrange(selmon);
 }
 
+/* zoom the last window */
 void zoomlast(const Arg *arg)
 {
   Client *c;
@@ -1104,7 +1184,7 @@ void zoomlast(const Arg *arg)
   }
 }
 
-/* zoom/cycles monitors */
+/* zoom/cycles the monitors */
 void zoommon(const Arg *arg)
 {
   Monitor *m;

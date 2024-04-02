@@ -818,8 +818,8 @@ void setasmastermon(Client *cm)
         } else {
           setasmaster(c);
         }
+        return;
       }
-      return;
     }
   }
 }

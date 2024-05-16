@@ -111,7 +111,7 @@ void fakepresskey(Window win, char *typemask, char *strkey)
   usleep(100000);
 }
 
-/* focus the client from the window class */
+/* focus the client from the window class or window id */
 void focusclient(const Arg *arg)
 {
   Arg a;
@@ -120,7 +120,7 @@ void focusclient(const Arg *arg)
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindowclass(c->win), arg->v) == 0) {
+      if (strcmp(getwindowclass(c->win), arg->v) == 0 || c->win == atoi(arg->v)) {
         if (m != selmon) {
           unfocus(selmon->sel, True);
           selmon = c->mon;
@@ -846,7 +846,7 @@ void showapps(const Arg *arg)
   char filepath1[FILE_SIZE];
   char filepath2[FILE_SIZE];
   char line[LINE_SIZE];
-  char cmd[sizeof filepath1 + sizeof filepath2 + 20]; /* 20 dmenu|sort */
+  char cmd[sizeof filepath1 + sizeof filepath2 + 37]; /* 37 dmenu|sort|cut */
   int nclients = 0;
   int winid = 0;
 
@@ -857,14 +857,19 @@ void showapps(const Arg *arg)
   }
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      fprintf(file, "%s\n", getwindowclass(c->win));
+      fprintf(file, "%s %lud\n", getwindowclass(c->win), c->win);
       nclients++;
     }
   }
   fclose(file);
 
+  if (!nclients) {
+    spawnsh("echo 'no apps to show!' | dmenu");
+    return;
+  }
+
   sprintf(filepath2, "%s/%s-dwm-showapps-select.txt", tmpdir, user);
-  snprintf(cmd, sizeof cmd, "sort %s | dmenu -l %d > %s", filepath1, nclients, filepath2);
+  snprintf(cmd, sizeof cmd, "sort %s | dmenu -l %d | cut -d ' ' -f2 > %s", filepath1, nclients, filepath2);
   if (system(cmd) && (file = fopen(filepath2, "r"))) {
     if (fgets(line, sizeof line - 1, file)) {
       /* remove '\n' from fgets */
@@ -873,13 +878,12 @@ void showapps(const Arg *arg)
       if (strcmp(arg->v, "focus") == 0) {
         focusclient(&a);
       } else if (strcmp(arg->v, "kill") == 0) {
-        winid = getidfromclass(&a);
+        winid = atoi(a.v);
         if (winid) {
           XKillClient(dpy, winid);
         }
       } else if (strcmp(arg->v, "master") == 0) {
-        winid = getidfromclass(&a);
-        setasmastermon(getclientfromid(winid));
+        setasmastermon(getclientfromid(atoi(a.v)));
       }
     }
     fclose(file);

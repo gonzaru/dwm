@@ -6,14 +6,12 @@
 /* My customized functions to add dwm functionality without patching dwm.c */
 
 /* standard headers */
-#include <stdlib.h>
-#include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
+#include <stdarg.h>
 #include <errno.h>
+#include <unistd.h>
 
 /* global macros */
 #define FILE_SIZE 256
@@ -26,15 +24,14 @@
 #define DEFAULT_TMPDIR "/tmp"
 
 /* function declarations */
-void debug(const char *fmt, ...) __attribute__((format(printf,1,2)));
+void debug(const char *fmt, ...);
 void fakepresskey(Window win, char *typemask, char *strkey);
 void focusclient(const Arg *arg);
 void focuslast(const Arg *arg);
 void focusmaster(const Arg *arg);
 void focusmonmaster(const Arg *arg);
 char *gettmpdir(void);
-char *getwindowclass(Window w);
-char *getwindowname(Window w);
+char *getwindow(Window w, char *type);
 int getidfromclass(const Arg *arg);
 Client *getclientfromid(int winid);
 int ismaster(Client *c);
@@ -131,7 +128,7 @@ void focusclient(const Arg *arg)
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindowclass(c->win), arg->v) == 0 || c->win == atoi(arg->v)) {
+      if (strcmp(getwindow(c->win, "class"), arg->v) == 0 || c->win == atoi(arg->v)) {
         if (m != selmon) {
           unfocus(selmon->sel, True);
           selmon = c->mon;
@@ -200,34 +197,16 @@ char *gettmpdir(void)
   return tmpdir;
 }
 
-/* get the client window class */
-char *getwindowclass(Window w)
+/* get the client window (class, name) */
+char *getwindow(Window w, char *type)
 {
   XClassHint ch = { NULL, NULL };
   char *ret = NULL;
 
   if (XGetClassHint(dpy, w, &ch)) {
-    if (ch.res_class) {
+    if (strcmp(type, "class") == 0 && ch.res_class) {
       ret = strdup(ch.res_class);
-    }
-    if (ch.res_class) {
-      XFree(ch.res_class);
-    }
-    if (ch.res_name) {
-      XFree(ch.res_name);
-    }
-  }
-  return ret;
-}
-
-/* get the client window name */
-char *getwindowname(Window w)
-{
-  XClassHint ch = { NULL, NULL };
-  char *ret = NULL;
-
-  if (XGetClassHint(dpy, w, &ch)) {
-    if (ch.res_name) {
+    } else if (strcmp(type, "name") == 0 && ch.res_name) {
       ret = strdup(ch.res_name);
     }
     if (ch.res_class) {
@@ -248,7 +227,7 @@ int getidfromclass(const Arg *arg)
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindowclass(c->win), arg->v) == 0) {
+      if (strcmp(getwindow(c->win, "class"), arg->v) == 0) {
         return c->win;
       }
     }
@@ -311,19 +290,19 @@ void organize(const Arg *arg)
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  int fd;
+  FILE *lock;
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
-  fd = open(filepath, O_CREAT | O_EXCL | O_WRONLY, 0600);
-  if (fd == -1) {
-    if (errno == EEXIST) {
-      spawnsh("echo 'dwm organize already executed!' | dmenu");
-    } else {
-      debug("can't create lock %s: %s", filepath, strerror(errno));
-    }
+  if ((lock = fopen(filepath, "r"))) {
+    fclose(lock);
+    spawnsh("echo 'dwm organize already executed!' | dmenu");
     return;
   }
-  close(fd);
+  if (!(lock = fopen(filepath, "w"))) {
+    debug("can't create lock %s: %s", filepath, strerror(errno));
+    return;
+  }
+  fclose(lock);
 
   /* organize tags after reload */
   putkeeptags();
@@ -657,7 +636,7 @@ void reloadbrowser(const Arg *arg)
   cc = selmon->sel;
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindowclass(c->win), arg->v) == 0 || (strcmp(defbrowser, arg->v) == 0)) {
+      if (strcmp(getwindow(c->win, "class"), arg->v) == 0 || (strcmp(defbrowser, arg->v) == 0)) {
         focus(c);
         browser_x = c->x + (c->w / 2);
         browser_y = c->y + (c->h / 2);
@@ -710,7 +689,7 @@ void savekeeptags(const Arg *arg)
     for (c = m->clients; c; c = c->next) {
       fprintf(file, "%d %d %d %d %d %lud %s %s\n", c->mon->num,
         c->tags, (ismaster(c) == 1) ? 1 : 0, (c == selmon->sel) ? 1 : 0,
-        (c->isfloating) ? 1 : 0, c->win, getwindowclass(c->win), c->name);
+        (c->isfloating) ? 1 : 0, c->win, getwindow(c->win, "class"), c->name);
     }
   }
   fclose(file);
@@ -728,7 +707,7 @@ void setscratchpad(const Arg *arg) {
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(scratchclass, getwindowclass(c->win)) == 0) {
+      if (strcmp(scratchclass, getwindow(c->win, "class")) == 0) {
         spawnsh("echo 'cannot create a new dynamic scratch, already exists!' | dmenu");
         return;
       }
@@ -759,7 +738,7 @@ void unsetscratchpad(const Arg *arg) {
     return;
   }
 
-  if (strcmp(scratchclass, getwindowclass(selmon->sel->win)) == 0) {
+  if (strcmp(scratchclass, getwindow(selmon->sel->win, "class")) == 0) {
     if (fgets(line, sizeof line - 1, file)) {
       sscanf(line, "%s %s", prevscratchname, prevscratchclass);
       setwindownameclass(selmon->sel->win, prevscratchname, prevscratchclass);
@@ -781,7 +760,7 @@ void scratchpadmon(const Arg *arg)
 
   for (m = mons; m && !match; m = m->next) {
     for (c = m->clients; c && !match; c = c->next) {
-      if (strcmp(scratchclass, getwindowclass(c->win)) == 0) {
+      if (strcmp(scratchclass, getwindow(c->win, "class")) == 0) {
         match = 1;
         if (c->mon != selmon) {
           sendmon(c, selmon);
@@ -891,7 +870,7 @@ void showapps(const Arg *arg)
   }
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      fprintf(file, "%s %lud\n", getwindowclass(c->win), c->win);
+      fprintf(file, "%s %lud\n", getwindow(c->win, "class"), c->win);
       nclients++;
     }
   }
@@ -1177,7 +1156,7 @@ void writeclassname(Client *c)
     return;
   }
 
-  fprintf(file, "%s %s\n", getwindowname(c->win), getwindowclass(c->win));
+  fprintf(file, "%s %s\n", getwindow(c->win, "name"), getwindow(c->win, "class"));
   fclose(file);
 }
 

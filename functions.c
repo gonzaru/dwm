@@ -5,18 +5,28 @@
 
 /* My customized functions to add dwm functionality without patching dwm.c */
 
+/* standard headers */
+#include <stdlib.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <errno.h>
+
 /* global macros */
 #define FILE_SIZE 256
 #define FIRST_TAG 1 << 0
 #define LAST_TAG 1 << (LENGTH(tags) - 1)
 #define LINE_SIZE 256
-#define SCRATCH_TAG 1 << 7
+#define SCRATCH_TAG 1 << 8
 
 /* default temporary directory path */
 #define DEFAULT_TMPDIR "/tmp"
 
 /* function declarations */
-void debug(const char *errstr, ...);
+void debug(const char *fmt, ...) __attribute__((format(printf,1,2)));
 void fakepresskey(Window win, char *typemask, char *strkey);
 void focusclient(const Arg *arg);
 void focuslast(const Arg *arg);
@@ -64,13 +74,14 @@ void zoomlast(const Arg *arg);
 void zoommon(const Arg *arg);
 
 /* debug info */
-void debug(const char *errstr, ...)
+void debug(const char *fmt, ...)
 {
   va_list ap;
 
-  va_start(ap, errstr);
-  vfprintf(stderr, errstr, ap);
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
   va_end(ap);
+  fputc('\n', stderr);
 }
 
 /* simulate a key press */
@@ -193,18 +204,40 @@ char *gettmpdir(void)
 char *getwindowclass(Window w)
 {
   XClassHint ch = { NULL, NULL };
+  char *ret = NULL;
 
-  XGetClassHint(dpy, w, &ch);
-  return ch.res_class;
+  if (XGetClassHint(dpy, w, &ch)) {
+    if (ch.res_class) {
+      ret = strdup(ch.res_class);
+    }
+    if (ch.res_class) {
+      XFree(ch.res_class);
+    }
+    if (ch.res_name) {
+      XFree(ch.res_name);
+    }
+  }
+  return ret;
 }
 
 /* get the client window name */
 char *getwindowname(Window w)
 {
   XClassHint ch = { NULL, NULL };
+  char *ret = NULL;
 
-  XGetClassHint(dpy, w, &ch);
-  return ch.res_name;
+  if (XGetClassHint(dpy, w, &ch)) {
+    if (ch.res_name) {
+      ret = strdup(ch.res_name);
+    }
+    if (ch.res_class) {
+      XFree(ch.res_class);
+    }
+    if (ch.res_name) {
+      XFree(ch.res_name);
+    }
+  }
+  return ret;
 }
 
 /* get the client window id from the window class */
@@ -275,17 +308,22 @@ void nexttag(const Arg *arg)
 /* organize the windows */
 void organize(const Arg *arg)
 {
-  FILE *file = NULL;
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
+  int fd;
 
-  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
-  if ((file = fopen(filepath, "r"))) {
-    fclose(file);
-    spawnsh("echo 'dwm organize already executed!' | dmenu");
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
+  fd = open(filepath, O_CREAT | O_EXCL | O_WRONLY, 0600);
+  if (fd == -1) {
+    if (errno == EEXIST) {
+      spawnsh("echo 'dwm organize already executed!' | dmenu");
+    } else {
+      debug("can't create lock %s: %s", filepath, strerror(errno));
+    }
     return;
   }
+  close(fd);
 
   /* organize tags after reload */
   putkeeptags();
@@ -302,12 +340,8 @@ void organize(const Arg *arg)
   /* focus to latest current window */
   putcurwin();
 
-  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
-  if (!(file = fopen(filepath, "w+"))) {
-    debug("can't create file %s", filepath);
-    return;
-  }
-  fclose(file);
+  /* remove lock */
+  unlink(filepath);
 }
 
 /* simulate a press mouse */
@@ -403,7 +437,7 @@ void putcurmaster(void)
   int fmon;
   long unsigned int fwin;
 
-  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -444,7 +478,7 @@ void putcurtag(void)
   int ftag;
   Arg a;
 
-  sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -487,7 +521,7 @@ void putcurwin(void)
   int fmon;
   long unsigned int fwin;
 
-  sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -530,7 +564,7 @@ void putfilemfact(const Arg *arg)
   int fmon;
   float fmfact;
 
-  sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -568,7 +602,7 @@ void putkeeptags(void)
   int ffloating;
   long unsigned int fwin;
 
-  sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -663,10 +697,10 @@ void savekeeptags(const Arg *arg)
   writecurmaster();
   writecurwin();
 
-  sprintf(filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
   remove(filepath);
 
-  sprintf(filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -719,7 +753,7 @@ void unsetscratchpad(const Arg *arg) {
     return;
   }
 
-  sprintf(filepath, "%s/%s-dwm-nameclass.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-nameclass.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -850,7 +884,7 @@ void showapps(const Arg *arg)
   int nclients = 0;
   int winid = 0;
 
-  sprintf(filepath1, "%s/%s-dwm-showapps-list.txt", tmpdir, user);
+  snprintf(filepath1, sizeof filepath1, "%s/%s-dwm-showapps-list.txt", tmpdir, user);
   if (!(file = fopen(filepath1, "w+"))) {
     debug("can't create file %s", filepath1);
     return;
@@ -868,7 +902,7 @@ void showapps(const Arg *arg)
     return;
   }
 
-  sprintf(filepath2, "%s/%s-dwm-showapps-select.txt", tmpdir, user);
+  snprintf(filepath2, sizeof filepath2, "%s/%s-dwm-showapps-select.txt", tmpdir, user);
   snprintf(cmd, sizeof cmd, "sort %s | dmenu -l %d | cut -d ' ' -f2 > %s", filepath1, nclients, filepath2);
   if (system(cmd) && (file = fopen(filepath2, "r"))) {
     if (fgets(line, sizeof line - 1, file)) {
@@ -1046,7 +1080,7 @@ void writecurmaster(void)
     return;
   }
 
-  sprintf(filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1071,8 +1105,7 @@ void writecurtag(void)
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
-  sprintf(filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
-  file = fopen(filepath, "w+");
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1096,7 +1129,7 @@ void writecurwin(void)
     return;
   }
 
-  sprintf(filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1114,7 +1147,7 @@ void writecurmfact(void)
   char *tmpdir = gettmpdir();
   Monitor *m;
 
-  sprintf(filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1138,7 +1171,7 @@ void writeclassname(Client *c)
     return;
   }
 
-  sprintf(filepath, "%s/%s-dwm-classname.txt", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-classname.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;

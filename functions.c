@@ -30,6 +30,7 @@ void focusclient(const Arg *arg);
 void focuslast(const Arg *arg);
 void focusmaster(const Arg *arg);
 void focusmonmaster(const Arg *arg);
+void focusstackfull(const Arg *arg);
 char *gettmpdir(void);
 char *getwindow(Window w, char *type);
 int getidfromclass(const Arg *arg);
@@ -184,6 +185,15 @@ void focusmonmaster(const Arg *arg)
 {
   focusmon(arg);
   focusmaster(arg);
+}
+
+/* focus stack on the fullcreen window */
+void focusstackfull(const Arg *arg)
+{
+  if (selmon->sel && selmon->sel->isfullscreen) {
+    setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
+  }
+  focusstack(arg);
 }
 
 /* get the tmpdir */

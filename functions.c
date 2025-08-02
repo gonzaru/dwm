@@ -62,6 +62,7 @@ void stackup(const Arg *arg);
 void toggleborder(const Arg *arg);
 void togglefullscr(const Arg *arg);
 void togglemousecursor(const Arg *arg);
+void togglebarpos(const Arg *arg);
 void writecurmaster(void);
 void writecurtag(void);
 void writecurwin(void);
@@ -994,31 +995,24 @@ void stackup(const Arg *arg) {
 /* toggle the window border */
 void toggleborder(const Arg *arg)
 {
-  Client *c = selmon->sel;
-  XWindowChanges wc;
-
-  if (!c) {
+  if (!selmon->sel) {
     return;
   }
-
-  if (c->bw) {
-    c->oldbw = c->bw;
-    c->bw = 0;
+  if (selmon->sel->bw) {
+    selmon->sel->oldbw = selmon->sel->bw;
+    selmon->sel->bw = 0;
   } else {
-    c->bw = c->oldbw;
+    selmon->sel->bw = selmon->sel->oldbw;
   }
-  wc.border_width = c->bw;
-  XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
+  arrange(selmon);
 }
 
 /* toggle to fullscreen */
 void togglefullscr(const Arg *arg)
 {
-  if (!selmon->sel) {
-    return;
+  if (selmon->sel) {
+    setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
   }
-
-  setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
 }
 
 /* toggle the mouse cursor */
@@ -1053,6 +1047,18 @@ void togglemousecursor(const Arg *arg)
     root_y_pos = root_y;
     XWarpPointer(dpy, None, root, 0, 0, 0, 0, pointer_x, pointer_y);
   }
+}
+
+/* toggle bar position between top and bottom */
+void togglebarpos(const Arg *arg)
+{
+  if (!selmon->showbar) {
+    return;
+  }
+  selmon->topbar = !selmon->topbar;
+  updatebarpos(selmon);
+  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
+  arrange(selmon);
 }
 
 /* write the current master window */
@@ -1245,20 +1251,21 @@ void zoommon(const Arg *arg)
     }
   }
   for (i = (sizeof(ac) / sizeof(int)) - 1; i >= 0; i--) {
-    if (ac[i]) {
-      for (m = mons; m; m = m->next) {
-        for (c = m->clients; c; c = c->next) {
-          if (c->win == ac[i]) {
-            pctags = c->tags;
-            if (c->mon == m1) {
-              sendmon(c, m2);
-            } else if (c->mon == m2) {
-              sendmon(c, m1);
-            }
-            ac[i] = '\0';
-            c->tags = pctags;
-            arrange(c->mon);
+    if (!ac[i]) {
+      continue;
+    }
+    for (m = mons; m; m = m->next) {
+      for (c = m->clients; c; c = c->next) {
+        if (c->win == ac[i]) {
+          pctags = c->tags;
+          if (c->mon == m1) {
+            sendmon(c, m2);
+          } else if (c->mon == m2) {
+            sendmon(c, m1);
           }
+          ac[i] = '\0';
+          c->tags = pctags;
+          arrange(c->mon);
         }
       }
     }

@@ -154,6 +154,7 @@ static Key keys[] = {
   { MODKEY,                         XK_F12,          spawn,              SHCMD("volume up && wmbarupdate") },
   { MODKEY|ShiftMask,               XK_F12,          spawn,              SHCMD("volume upapp && wmbarupdate") },
   { MODKEY|ControlMask,             XK_s,            spawn,              SHCMD("slock") },
+  { MODKEY|ShiftMask,               XK_b,            togglebarpos,       {0} },
   { MODKEY|ControlMask,             XK_b,            spawn,              SHCMD("wmbarupdate") },
   { MODKEY,                         XK_Print,        spawn,              SHCMD("wmscreenshot full") },
   { MODKEY|ShiftMask,               XK_Print,        spawn,              SHCMD("wmscreenshot select") },

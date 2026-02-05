@@ -1098,11 +1098,11 @@ void setasmastermon(Client *cm)
 void setdefmfact(const Arg *arg)
 {
   if (!arg || !selmon->lt[selmon->sellt]->arrange) {
-   return;
+    return;
   }
 
   if (arg->f < 0.05 || arg->f > 0.95) {
-   return;
+    return;
   }
 
   /* TODO: multi monitor? */
@@ -1113,18 +1113,18 @@ void setdefmfact(const Arg *arg)
 /* set the layout by monitor */
 void setlayoutmon(const Arg *arg, Monitor *m)
 {
-	if (!arg || !arg->v || arg->v != m->lt[m->sellt]) {
-		m->sellt ^= 1;
-	}
-	if (arg && arg->v) {
-		m->lt[m->sellt] = (Layout *)arg->v;
-	}
-	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
-	if (m->sel) {
-		arrange(m);
-	} else {
-		drawbar(m);
-	}
+  if (!arg || !arg->v || arg->v != m->lt[m->sellt]) {
+    m->sellt ^= 1;
+  }
+  if (arg && arg->v) {
+    m->lt[m->sellt] = (Layout *)arg->v;
+  }
+  strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
+  if (m->sel) {
+    arrange(m);
+  } else {
+    drawbar(m);
+  }
 }
 
 /* set the default nmaster */

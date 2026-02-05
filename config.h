@@ -30,7 +30,6 @@ static const char *colors[][3] = {
   [SchemeSel] = {selfgcolor, selbgcolor, selbordercolor},
 };
 
-
 /* browser for maps like focus/reload */
 static const char defbrowser[] = "Chromium-browser";
 
@@ -48,29 +47,30 @@ static const Rule rules[] = {
   */
   /* class              instance    title       tags mask     isfloating   monitor */
   { "Firefox",          NULL,       NULL,       1 << 8,       0,           -1 },
-  { "Opera",            NULL,       NULL,       1 << 8,       0,           -1 },
   { "Google-chrome",    NULL,       NULL,       1 << 8,       0,           -1 },
-  { "Chrome",           NULL,       NULL,       1 << 8,       0,           -1 },
   { "Chromium-browser", NULL,       NULL,       1 << 8,       0,           -1 },
-  { "chromium-browser", NULL,       NULL,       1 << 8,       0,           -1 },
 };
 
-
 /* layout(s) */
-static const float mfact     = 0.60; /* factor of master area size [0.05..0.95] */
-static const int nmaster     = 1;    /* number of clients in master area */
-static const int resizehints = 0;    /* 1 means respect size hints in tiled resizals */
-static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
+static const float mfact     = 0.65;    /* factor of master area size [0.05..0.95] */
+static const float defmfact  = mfact;   /* default mfact */
+static const int nmaster     = 1;       /* number of clients in master area */
+static const int defnmaster  = nmaster; /* default nmaster */
+static const int resizehints = 0;       /* 1 means respect size hints in tiled resizals */
+static const int lockfullscreen = 1;    /* 1 will force focus on the fullscreen window */
+static const int refreshrate = 120;     /* refresh rate (per second) for client move/resize */
+
+void tileright(Monitor *m); /* master on right */
+static const Layout layouts[] = {
+  /* symbol     arrange function */
+  { "[]=",      tile },      /* first entry is default */
+  { "><>",      NULL },      /* no layout function means floating behavior */
+  { "[M]",      monocle },
+  { "=[]",      tileright }, /* master on right */
+};
 
 /* custom functions */
 #include "functions.c"
-
-static const Layout layouts[] = {
-  /* symbol     arrange function */
-  { "[]=",      tile },    /* first entry is default */
-  { "><>",      NULL },    /* no layout function means floating behavior */
-  { "[M]",      monocle },
-};
 
 /* key definitions */
 #define MODKEY Mod4Mask
@@ -85,8 +85,8 @@ static const Layout layouts[] = {
 
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
-static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, NULL };
-static const char *termcmd[]  = { "uxterm", NULL };
+static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, topbar ? NULL : "-b", NULL };
+static const char *termcmd[]  = { "xterm", NULL };
 
 static Key keys[] = {
   /* modifier                     key        function        argument */
@@ -99,8 +99,13 @@ static Key keys[] = {
   { MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
   { MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
   { MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
+  /*
   { MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
   { MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
+  */
+   /* layout tileright */
+  { MODKEY,                       XK_h,      setmfactwrp,    {.f = -0.05} },
+  { MODKEY,                       XK_l,      setmfactwrp,    {.f = +0.05} },
   { MODKEY,                       XK_Return, zoom,           {0} },
   { MODKEY,                       XK_Tab,    view,           {0} },
   { MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
@@ -128,8 +133,8 @@ static Key keys[] = {
   /* END DEFAULTS */
 
   /* MY MODKEYS */
-  { MODKEY,                         XK_bracketleft,  zoomfirst,          {0} },
-  { MODKEY,                         XK_bracketright, zoomlast,           {0} },
+  { MODKEY,                         XK_bracketleft,  zoomfirstwrp,       {0} },
+  { MODKEY,                         XK_bracketright, zoomlastwrp,        {0} },
   { MODKEY|ShiftMask,               XK_j,            stackdown,          {0} },
   { MODKEY|ShiftMask,               XK_k,            stackup,            {0} },
   { MODKEY|ControlMask,             XK_j,            focusstackfull,     {.i = +1 } },
@@ -141,7 +146,7 @@ static Key keys[] = {
   { MODKEY|ControlMask,             XK_Return,       scratchpadmon,      {.v = defscratchapp1} },
   { MODKEY|ControlMask,             XK_i,            setscratchpad,      {.v = defscratchappdyn} },
   { MODKEY|ShiftMask|ControlMask,   XK_i,            unsetscratchpad,    {.v = defscratchappdyn} },
-  { MODKEY|ControlMask,             XK_o,            scratchpadmon,      {.v = defscratchappdyn },
+  { MODKEY|ControlMask,             XK_o,            scratchpadmon,      {.v = defscratchappdyn} },
   { MODKEY|ShiftMask|ControlMask,   XK_Return,       zoommon,            {0} },
   { MODKEY|ControlMask,             XK_bracketleft,  spawn,              SHCMD("primary2clipboard") },
   { MODKEY|ControlMask,             XK_bracketright, spawn,              SHCMD("clipboard2primary") },
@@ -153,11 +158,13 @@ static Key keys[] = {
   { MODKEY|ShiftMask,               XK_F11,          spawn,              SHCMD("volume downapp && wmbarupdate") },
   { MODKEY,                         XK_F12,          spawn,              SHCMD("volume up && wmbarupdate") },
   { MODKEY|ShiftMask,               XK_F12,          spawn,              SHCMD("volume upapp && wmbarupdate") },
-  { MODKEY|ControlMask,             XK_s,            spawn,              SHCMD("slock") },
+  { MODKEY,                         XK_s,            spawn,              SHCMD("sleep 0.2 && slock") },
+  { MODKEY|ShiftMask,               XK_s,            savesession,        {0} },
+  { MODKEY|ShiftMask|ControlMask,   XK_s,            restoresession,     {0} },
   { MODKEY|ShiftMask,               XK_b,            togglebarpos,       {0} },
   { MODKEY|ControlMask,             XK_b,            spawn,              SHCMD("wmbarupdate") },
-  { MODKEY,                         XK_Print,        spawn,              SHCMD("wmscreenshot full") },
-  { MODKEY|ShiftMask,               XK_Print,        spawn,              SHCMD("wmscreenshot select") },
+  { MODKEY,                         XK_Print,        spawn,              SHCMD("sleep 0.2 && wmscreenshot full") },
+  { MODKEY|ShiftMask,               XK_Print,        spawn,              SHCMD("sleep 0.2 && wmscreenshot select") },
   { MODKEY,                         XK_Home,         focusclient,        {.v = defbrowser} },
   { MODKEY,                         XK_End,          reloadbrowser,      {.v = defbrowser} },
   { MODKEY,                         XK_y,            showurgent,         {0} },
@@ -175,10 +182,7 @@ static Key keys[] = {
   { MODKEY|ShiftMask,               XK_Prior,        tagmon,             {.i = -1} },
   { MODKEY|ShiftMask,               XK_Next,         tagmon,             {.i = +1} },
   { MODKEY,                         XK_q,            reloaddwm,          {0} },
-  { MODKEY,                         XK_s,            savekeeptags,       {0} },
-  { MODKEY,                         XK_F4,           spawn,              SHCMD("keyboard-toggle && wmbarupdate") },
-  { MODKEY,                         XK_o,            organize,           {0} },
-  { MODKEY|ShiftMask,               XK_o,            putfilemfact,       {0} },
+  { MODKEY,                         XK_F4,           spawn,              SHCMD("setxkbsw -n && wmbarupdate") },
 };
 
 /* button definitions */

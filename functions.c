@@ -20,6 +20,9 @@
 #define LINE_SIZE 256
 #define SCRATCH_TAG 1 << 8
 
+/* default nmaster */
+#define DEFAULT_NMASTER defnmaster
+
 /* default temporary directory path */
 #define DEFAULT_TMPDIR "/tmp"
 
@@ -36,40 +39,58 @@ char *getwindow(Window w, char *type);
 int getidfromclass(const Arg *arg);
 Client *getclientfromid(int winid);
 int ismaster(Client *c);
+int istileright(void);
+void killunsel(const Arg *arg);
+int layoutidx(const char *sym);
 void nexttag(const Arg *arg);
-void organize(const Arg *arg);
+void nextlayout(const Arg *arg);
 void pressmousecursor(const Arg *arg);
+void prevlayout(const Arg *arg);
 void prevtag(const Arg *arg);
+void putcurbar(void);
+void putcurlayout(void);
 void putcurmaster(void);
+void putcurmon(void);
 void putcurtag(void);
 void putcurwin(void);
 void putfilemfact(const Arg *arg);
 void putkeeptags(void);
 void reloadbrowser(const Arg *arg);
 void reloaddwm(const Arg *arg);
-void savekeeptags(const Arg *arg);
+void restoresession(const Arg *arg);
+void savesession(const Arg *arg);
 void scratchpadmon(const Arg *arg);
 void setscratchpad(const Arg *arg);
 void unsetscratchpad(const Arg *arg);
 void setasmaster(Client *c);
 void setasmastermon(Client *c);
+void setdefmfact(const Arg *arg);
+void setdefnmaster(const Arg *arg);
+void setlayoutmon(const Arg *arg, Monitor *m);
+void setmfactwrp(const Arg *arg);
 int setwindownameclass(Window w, char *sn, char *sc);
 void showapps(const Arg *arg);
 void showurgent(const Arg *arg);
 void spawnsh(const char *cmd);
 void stackdown(const Arg *arg);
 void stackup(const Arg *arg);
+void tileright(Monitor *m);
 void toggleborder(const Arg *arg);
 void togglefullscr(const Arg *arg);
 void togglemousecursor(const Arg *arg);
 void togglebarpos(const Arg *arg);
+void writecurbar(void);
+void writecurlayout(void);
 void writecurmaster(void);
+void writecurmon(void);
 void writecurtag(void);
 void writecurwin(void);
 void writecurmfact(void);
 void writeclassname(Client *c);
 void zoomfirst(const Arg *arg);
+void zoomfirstwrp(const Arg *arg);
 void zoomlast(const Arg *arg);
+void zoomlastwrp(const Arg *arg);
 void zoommon(const Arg *arg);
 
 /* debug info */
@@ -279,6 +300,65 @@ int ismaster(Client *cm)
   return (c == cm) ? 1 : 0;
 }
 
+/* check if the tile is on the right position (default left) */
+int istileright(void)
+{
+  /* return strcmp(selmon->ltsymbol, "=[]") == 0; */
+  return selmon->lt[selmon->sellt]->arrange == tileright;
+}
+
+/* kill all clients except the selected one (current tag) */
+void killunsel(const Arg *arg)
+{
+  Client *c;
+
+  if (!selmon->sel) {
+    return;
+  }
+
+  for (c = selmon->clients; c; c = c->next) {
+    if (ISVISIBLE(c) && c != selmon->sel) {
+      if (!sendevent(c, wmatom[WMDelete])) {
+        XGrabServer(dpy);
+        XSetErrorHandler(xerrordummy);
+        XSetCloseDownMode(dpy, DestroyAll);
+        XKillClient(dpy, c->win);
+        XSync(dpy, False);
+        XSetErrorHandler(xerror);
+        XUngrabServer(dpy);
+      }
+    }
+  }
+}
+
+/* return the layout index from symbol */
+int layoutidx(const char *sym)
+{
+  int i;
+
+  /* layout like [%d] */
+  int count;
+  char trailing;
+
+  if (!sym) {
+    return -1;
+  }
+
+  for (i = 0; layouts[i].symbol; i++) {
+    /* layout symbol */
+    if (strcmp(layouts[i].symbol, sym) == 0) {
+      return i;
+    }
+    /* monocle [%d] */
+    if (sscanf(sym, "[%d]%c", &count, &trailing) == 1) {
+      if (layouts[i].arrange == monocle) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
 /* go to the next tag */
 void nexttag(const Arg *arg)
 {
@@ -295,43 +375,28 @@ void nexttag(const Arg *arg)
   view(&a);
 }
 
-/* organize the windows */
-void organize(const Arg *arg)
+/* go to the next layout */
+void nextlayout(const Arg *arg)
 {
-  char filepath[FILE_SIZE];
-  char *user = getenv("USER");
-  char *tmpdir = gettmpdir();
-  FILE *lock;
+  Arg a;
+  Layout *l;
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
-  if ((lock = fopen(filepath, "r"))) {
-    fclose(lock);
-    spawnsh("echo 'dwm organize already executed!' | dmenu");
-    return;
+  for (l = (Layout *)layouts; l->symbol && l != selmon->lt[selmon->sellt]; l++) {
+    ;
   }
-  if (!(lock = fopen(filepath, "w"))) {
-    debug("can't create lock %s: %s", filepath, strerror(errno));
-    return;
+
+  /* fallback */
+  if (!l->symbol) {
+    l = (Layout *)layouts;
   }
-  fclose(lock);
 
-  /* organize tags after reload */
-  putkeeptags();
-
-  /* set fmfact for all monitors */
-  putfilemfact(arg);
-
-  /* go to latest monitor current tag */
-  putcurtag();
-
-  /* set as master to latest current master window */
-  putcurmaster();
-
-  /* focus to latest current window */
-  putcurwin();
-
-  /* remove lock */
-  unlink(filepath);
+  if ((l + 1)->symbol) {
+    a.v = (l + 1);
+    setlayout(&a);
+  } else {
+    a.v = &layouts[0];
+    setlayout(&a);
+  }
 }
 
 /* simulate a press mouse */
@@ -398,6 +463,35 @@ void pressmousecursor(const Arg *arg)
   XFlush(dpy);
 }
 
+/* go to the previous layout */
+void prevlayout(const Arg *arg)
+{
+  Arg a;
+  Layout *l;
+  Layout *p;
+
+  for (l = (Layout *)layouts; l->symbol && l != selmon->lt[selmon->sellt]; l++) {
+    ;
+  }
+
+  /* fallback */
+  if (!l->symbol) {
+    l = (Layout *)layouts;
+  }
+
+  for (p = (Layout *)layouts; (p + 1)->symbol; p++) {
+    ;
+  }
+
+  if (l == (Layout *)layouts) {
+    a.v = p;
+    setlayout(&a);
+  } else {
+    a.v = (l - 1);
+    setlayout(&a);
+  }
+}
+
 /* go to the previous tag */
 void prevtag(const Arg *arg)
 {
@@ -412,6 +506,75 @@ void prevtag(const Arg *arg)
   }
   a.ui = prevtag;
   view(&a);
+}
+
+/* set bar */
+void putcurbar(void)
+{
+  FILE *file;
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
+  char *user = getenv("USER");
+  char *tmpdir = gettmpdir();
+  Monitor *m;
+  int fmon, fshowbar, ftopbar;
+
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curbar.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "r"))) {
+    debug("can't open file %s", filepath);
+    return;
+  }
+
+  while (!feof(file)) {
+    if (fgets(line, sizeof line - 1, file)) {
+      sscanf(line, "%d %d %d", &fmon, &fshowbar, &ftopbar);
+      for (m = mons; m; m = m->next) {
+        if (m->num == fmon) {
+          m->showbar = fshowbar;
+          m->topbar = ftopbar;
+          updatebarpos(m);
+          XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
+          arrange(m);
+        }
+      }
+    }
+  }
+  fclose(file);
+}
+
+/* set layout */
+void putcurlayout(void)
+{
+  FILE *file;
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
+  char *user = getenv("USER");
+  char *tmpdir = gettmpdir();
+  Monitor *m;
+  int idx;
+  int fmon;
+  char fltsymbol[16];
+
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curlayout.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "r"))) {
+    debug("can't open file %s", filepath);
+    return;
+  }
+
+  while (!feof(file)) {
+    if (fgets(line, sizeof line - 1, file)) {
+      sscanf(line, "%d %s", &fmon, fltsymbol);
+      for (m = mons; m; m = m->next) {
+        if (m->num == fmon) {
+          idx = layoutidx(fltsymbol);
+          if (idx >= 0) {
+            setlayoutmon(&((Arg) { .v = &layouts[idx] }), m);
+          }
+        }
+      }
+    }
+  }
+  fclose(file);
 }
 
 /* set as master to the latest current master window */
@@ -455,7 +618,41 @@ void putcurmaster(void)
   fclose(file);
 }
 
-/* go to latest monitor current tag */
+/* go to the latest monitor */
+void putcurmon(void)
+{
+  FILE *file;
+  char filepath[FILE_SIZE];
+  char line[LINE_SIZE];
+  char *user = getenv("USER");
+  char *tmpdir = gettmpdir();
+  Monitor *m;
+  int fmon;
+
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmon.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "r"))) {
+    debug("can't open file %s", filepath);
+    return;
+  }
+
+  if (fgets(line, sizeof line - 1, file)) {
+    sscanf(line, "%d", &fmon);
+    for (m = mons; m; m = m->next) {
+      if (m->num == fmon) {
+        if (m != selmon) {
+          unfocus(selmon->sel, True);
+          selmon = m;
+          focus(NULL);
+        }
+        arrange(m);
+        break;
+      }
+    }
+  }
+  fclose(file);
+}
+
+/* go to the latest monitor current tag */
 void putcurtag(void)
 {
   FILE *file;
@@ -560,13 +757,15 @@ void putfilemfact(const Arg *arg)
     return;
   }
 
-  if (fgets(line, sizeof line - 1, file)) {
-    sscanf(line, "%d %f", &fmon, &fmfact);
-    for (m = mons; m; m = m->next) {
-      if (m->num == fmon) {
-        if (m->mfact != fmfact) {
-          m->mfact = fmfact;
-          arrange(m);
+  while (!feof(file)) {
+    if (fgets(line, sizeof line - 1, file)) {
+      sscanf(line, "%d %f", &fmon, &fmfact);
+      for (m = mons; m; m = m->next) {
+        if (m->num == fmon) {
+          if (m->mfact != fmfact) {
+            m->mfact = fmfact;
+            arrange(m);
+          }
         }
       }
     }
@@ -574,7 +773,7 @@ void putfilemfact(const Arg *arg)
   fclose(file);
 }
 
-/* organize the tags after reload */
+/* put the tags after reload */
 void putkeeptags(void)
 {
   Arg a;
@@ -664,16 +863,12 @@ void reloadbrowser(const Arg *arg)
 /* reload dwm */
 void reloaddwm(const Arg *arg)
 {
-  writecurmfact();
-  writecurtag();
-  writecurmaster();
-  writecurwin();
-  savekeeptags(arg);
+  savesession(arg);
   spawnsh("${HOME}/bin/wmreload");
 }
 
-/* save the tags */
-void savekeeptags(const Arg *arg)
+/* save the session */
+void savesession(const Arg *arg)
 {
   Monitor *m;
   Client *c;
@@ -682,12 +877,15 @@ void savekeeptags(const Arg *arg)
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
+  writecurmon();
+  writecurlayout();
+  writecurbar();
   writecurmfact();
   writecurtag();
   writecurmaster();
   writecurwin();
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-organize.lock", tmpdir, user);
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-session.lock", tmpdir, user);
   remove(filepath);
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
@@ -704,6 +902,54 @@ void savekeeptags(const Arg *arg)
     }
   }
   fclose(file);
+}
+
+/* restore the session */
+void restoresession(const Arg *arg)
+{
+  char filepath[FILE_SIZE];
+  char *user = getenv("USER");
+  char *tmpdir = gettmpdir();
+  FILE *lock;
+
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-session.lock", tmpdir, user);
+  if ((lock = fopen(filepath, "r"))) {
+    fclose(lock);
+    spawnsh("echo 'dwm session already executed!' | dmenu");
+    return;
+  }
+  if (!(lock = fopen(filepath, "w"))) {
+    debug("can't create lock %s: %s", filepath, strerror(errno));
+    return;
+  }
+  fclose(lock);
+
+  /* set bar */
+  putcurbar();
+
+  /* set layout */
+  putcurlayout();
+
+  /* put tags after reload */
+  putkeeptags();
+
+  /* set fmfact for all monitors */
+  putfilemfact(arg);
+
+  /* set as master to latest current master window */
+  putcurmaster();
+
+  /* focus to latest current window */
+  putcurwin();
+
+  /* go to latest monitor current tag */
+  putcurtag();
+
+  /* go to lastest monitor */
+  putcurmon();
+
+  /* remove lock */
+  unlink(filepath);
 }
 
 /* set the scratchpad */
@@ -846,6 +1092,57 @@ void setasmastermon(Client *cm)
       }
     }
   }
+}
+
+/* set the default mfact */
+void setdefmfact(const Arg *arg)
+{
+  if (!arg || !selmon->lt[selmon->sellt]->arrange) {
+   return;
+  }
+
+  if (arg->f < 0.05 || arg->f > 0.95) {
+   return;
+  }
+
+  /* TODO: multi monitor? */
+  selmon->mfact = arg->f;
+  arrange(selmon);
+}
+
+/* set the layout by monitor */
+void setlayoutmon(const Arg *arg, Monitor *m)
+{
+	if (!arg || !arg->v || arg->v != m->lt[m->sellt]) {
+		m->sellt ^= 1;
+	}
+	if (arg && arg->v) {
+		m->lt[m->sellt] = (Layout *)arg->v;
+	}
+	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
+	if (m->sel) {
+		arrange(m);
+	} else {
+		drawbar(m);
+	}
+}
+
+/* set the default nmaster */
+void setdefnmaster(const Arg *arg)
+{
+  selmon->nmaster = DEFAULT_NMASTER;
+  arrange(selmon);
+}
+
+/* set mfact wrapper */
+void setmfactwrp(const Arg *arg)
+{
+  Arg a = *arg;
+
+  if (istileright()) {
+    a.f = -a.f;
+  }
+  setmfact(&a);
 }
 
 /* set the client window class */
@@ -992,6 +1289,42 @@ void stackup(const Arg *arg) {
   }
 }
 
+/* tile right (layout) */
+void tileright(Monitor *m)
+{
+  unsigned int i, n, h, mw, my, ty;
+  Client *c;
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  if (n > m->nmaster) {
+    mw = m->nmaster ? m->ww * m->mfact : 0;
+  } else {
+    mw = m->ww;
+  }
+
+  for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    if (i < m->nmaster) {
+      h = (m->wh - my) / (MIN(n, m->nmaster) - i);
+      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+      if (my + HEIGHT(c) < m->wh) {
+        my += HEIGHT(c);
+      }
+   } else {
+      h = (m->wh - ty) / (n - i);
+      resize(c, m->wx, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+      if (ty + HEIGHT(c) < m->wh) {
+        ty += HEIGHT(c);
+      }
+    }
+  }
+}
+
 /* toggle the window border */
 void toggleborder(const Arg *arg)
 {
@@ -1052,13 +1385,54 @@ void togglemousecursor(const Arg *arg)
 /* toggle bar position between top and bottom */
 void togglebarpos(const Arg *arg)
 {
-  if (!selmon->showbar) {
+  if (selmon->showbar) {
+    selmon->topbar = !selmon->topbar;
+    updatebarpos(selmon);
+    XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
+    arrange(selmon);
+  }
+}
+
+/* write the current bar */
+void writecurbar(void)
+{
+  FILE *file;
+  Monitor *m;
+  char filepath[FILE_SIZE];
+  char *user = getenv("USER");
+  char *tmpdir = gettmpdir();
+
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curbar.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
     return;
   }
-  selmon->topbar = !selmon->topbar;
-  updatebarpos(selmon);
-  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
-  arrange(selmon);
+
+  for (m = mons; m; m = m->next) {
+    fprintf(file, "%d %d %d\n", m->num, m->showbar, m->topbar);
+  }
+  fclose(file);
+}
+
+/* write the current layout */
+void writecurlayout(void)
+{
+  FILE *file;
+  Monitor *m;
+  char filepath[FILE_SIZE];
+  char *user = getenv("USER");
+  char *tmpdir = gettmpdir();
+
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curlayout.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+
+  for (m = mons; m; m = m->next) {
+    fprintf(file, "%d %s\n", m->num, m->ltsymbol);
+  }
+  fclose(file);
 }
 
 /* write the current master window */
@@ -1088,6 +1462,27 @@ void writecurmaster(void)
       fprintf(file, "%d %lud\n", c->mon->num, c->win);
     }
   }
+  fclose(file);
+}
+
+/* write the current monitor */
+void writecurmon(void)
+{
+  FILE *file;
+  char filepath[FILE_SIZE];
+  char *user = getenv("USER");
+  char *tmpdir = gettmpdir();
+
+  if (!selmon) {
+    return;
+  }
+
+  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmon.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
+    return;
+  }
+  fprintf(file, "%d\n", selmon->num);
   fclose(file);
 }
 
@@ -1195,6 +1590,16 @@ void zoomfirst(const Arg *arg)
   arrange(selmon);
 }
 
+/* zoom first wrapper */
+void zoomfirstwrp(const Arg *arg)
+{
+  if (istileright()) {
+    zoomlast(arg);
+  } else {
+    zoomfirst(arg);
+  }
+}
+
 /* zoom the last window */
 void zoomlast(const Arg *arg)
 {
@@ -1213,6 +1618,16 @@ void zoomlast(const Arg *arg)
   }
   if (cl) {
     pop(cl);
+  }
+}
+
+/* zoom last wrapper */
+void zoomlastwrp(const Arg *arg)
+{
+  if (istileright()) {
+    zoomfirst(arg);
+  } else {
+    zoomlast(arg);
   }
 }
 

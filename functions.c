@@ -148,10 +148,15 @@ void focusclient(const Arg *arg)
   Arg a;
   Monitor *m;
   Client *c;
+  char *cls;
+  int match;
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindow(c->win, "class"), arg->v) == 0 || c->win == atoi(arg->v)) {
+      cls = getwindow(c->win, "class");
+      match = (cls && strcmp(cls, arg->v) == 0) || (c->win == atoi(arg->v));
+      free(cls);
+      if (match) {
         if (m != selmon) {
           unfocus(selmon->sel, True);
           selmon = c->mon;
@@ -256,10 +261,15 @@ int getidfromclass(const Arg *arg)
 {
   Monitor *m;
   Client *c;
+  char *cls;
+  int match;
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindow(c->win, "class"), arg->v) == 0) {
+      cls = getwindow(c->win, "class");
+      match = (cls && strcmp(cls, arg->v) == 0);
+      free(cls);
+      if (match) {
         return c->win;
       }
     }
@@ -563,7 +573,7 @@ void putcurlayout(void)
 
   while (!feof(file)) {
     if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %s", &fmon, fltsymbol);
+      sscanf(line, "%d %15s", &fmon, fltsymbol);
       for (m = mons; m; m = m->next) {
         if (m->num == fmon) {
           idx = layoutidx(fltsymbol);
@@ -598,7 +608,7 @@ void putcurmaster(void)
 
   while (!feof(file)) {
     if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %lud", &fmon, &fwin);
+      sscanf(line, "%d %lu", &fmon, &fwin);
       for (m = mons; m; m = m->next) {
         for (c = m->clients; c; c = c->next) {
           if (c->win == fwin) {
@@ -715,7 +725,7 @@ void putcurwin(void)
   }
 
   if (fgets(line, sizeof line - 1, file)) {
-    sscanf(line, "%d %lud", &fmon, &fwin);
+    sscanf(line, "%d %lu", &fmon, &fwin);
     for (m = mons; m; m = m->next) {
       for (c = m->clients; c; c = c->next) {
         if (c->win == fwin) {
@@ -799,7 +809,7 @@ void putkeeptags(void)
 
   while (!feof(file)) {
     if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %d %d %d %d %lud", &fmon, &ftag, &fmaster, &fsel, &ffloating, &fwin);
+      sscanf(line, "%d %d %d %d %d %lu", &fmon, &ftag, &fmaster, &fsel, &ffloating, &fwin);
       for (m = mons; m; m = m->next) {
         for (c = m->clients; c; c = c->next) {
           if (c->win == fwin) {
@@ -837,6 +847,8 @@ void reloadbrowser(const Arg *arg)
   int win_x, win_y;
   int browser_x, browser_y;
   unsigned int mask_ret;
+  char *cls;
+  int match;
 
   /* get current x, y mouse pointer */
   if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &current_x, &current_y, &win_x, &win_y, &mask_ret)) {
@@ -846,7 +858,10 @@ void reloadbrowser(const Arg *arg)
   cc = selmon->sel;
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(getwindow(c->win, "class"), arg->v) == 0 || (strcmp(defbrowser, arg->v) == 0)) {
+      cls = getwindow(c->win, "class");
+      match = (cls && strcmp(cls, arg->v) == 0);
+      free(cls);
+      if (match) {
         focus(c);
         browser_x = c->x + (c->w / 2);
         browser_y = c->y + (c->h / 2);
@@ -876,6 +891,7 @@ void savesession(const Arg *arg)
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
+  char *cls;
 
   writecurmon();
   writecurlayout();
@@ -896,9 +912,11 @@ void savesession(const Arg *arg)
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      fprintf(file, "%d %d %d %d %d %lud %s %s\n", c->mon->num,
+      cls = getwindow(c->win, "class");
+      fprintf(file, "%d %d %d %d %d %lu %s %s\n", c->mon->num,
         c->tags, (ismaster(c) == 1) ? 1 : 0, (c == selmon->sel) ? 1 : 0,
-        (c->isfloating) ? 1 : 0, c->win, getwindow(c->win, "class"), c->name);
+        (c->isfloating) ? 1 : 0, c->win, cls ? cls : "", c->name);
+      free(cls);
     }
   }
   fclose(file);
@@ -957,6 +975,8 @@ void setscratchpad(const Arg *arg) {
   Monitor *m;
   Client *c;
   char *scratchclass = ((char **)arg->v)[1];
+  char *cls;
+  int match;
 
   if (!selmon->sel) {
     return;
@@ -964,7 +984,10 @@ void setscratchpad(const Arg *arg) {
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      if (strcmp(scratchclass, getwindow(c->win, "class")) == 0) {
+      cls = getwindow(c->win, "class");
+      match = (cls && strcmp(scratchclass, cls) == 0);
+      free(cls);
+      if (match) {
         spawnsh("echo 'cannot create a new dynamic scratch, already exists!' | dmenu");
         return;
       }
@@ -984,6 +1007,8 @@ void unsetscratchpad(const Arg *arg) {
   char line[LINE_SIZE];
   char prevscratchclass[FILE_SIZE];
   char prevscratchname[FILE_SIZE];
+  char *cls;
+  char match;
 
   if (!selmon->sel) {
     return;
@@ -995,7 +1020,10 @@ void unsetscratchpad(const Arg *arg) {
     return;
   }
 
-  if (strcmp(scratchclass, getwindow(selmon->sel->win, "class")) == 0) {
+  cls = getwindow(selmon->sel->win, "class");
+  match = (cls && strcmp(scratchclass, cls) == 0);
+  free(cls);
+  if (match) {
     if (fgets(line, sizeof line - 1, file)) {
       sscanf(line, "%s %s", prevscratchname, prevscratchclass);
       setwindownameclass(selmon->sel->win, prevscratchname, prevscratchclass);
@@ -1013,12 +1041,17 @@ void scratchpadmon(const Arg *arg)
   Client *c;
   const char *scratchcmd = ((char **)arg->v)[0];
   const char *scratchclass = ((char **)arg->v)[1];
-  int match = 0;
+  int found = 0;
+  char *cls;
+  int match;
 
-  for (m = mons; m && !match; m = m->next) {
-    for (c = m->clients; c && !match; c = c->next) {
-      if (strcmp(scratchclass, getwindow(c->win, "class")) == 0) {
-        match = 1;
+  for (m = mons; m && !found; m = m->next) {
+    for (c = m->clients; c && !found; c = c->next) {
+      cls = getwindow(c->win, "class");
+      match = (cls && strcmp(scratchclass, cls) == 0);
+      free(cls);
+      if (match) {
+        found = 1;
         if (c->mon != selmon) {
           sendmon(c, selmon);
           arrange(c->mon);
@@ -1038,7 +1071,7 @@ void scratchpadmon(const Arg *arg)
     }
   }
   /* run it if not present */
-  if (!match && scratchcmd) {
+  if (!found && scratchcmd) {
     spawnsh(scratchcmd);
   }
 }
@@ -1120,6 +1153,7 @@ void setlayoutmon(const Arg *arg, Monitor *m)
     m->lt[m->sellt] = (Layout *)arg->v;
   }
   strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
+  m->ltsymbol[sizeof m->ltsymbol - 1] = '\0';
   if (m->sel) {
     arrange(m);
   } else {
@@ -1170,6 +1204,7 @@ void showapps(const Arg *arg)
   char cmd[sizeof filepath1 + sizeof filepath2 + 37]; /* 37 dmenu|sort|cut */
   int nclients = 0;
   int winid = 0;
+  char *cls;
 
   snprintf(filepath1, sizeof filepath1, "%s/%s-dwm-showapps-list.txt", tmpdir, user);
   if (!(file = fopen(filepath1, "w+"))) {
@@ -1178,7 +1213,9 @@ void showapps(const Arg *arg)
   }
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
-      fprintf(file, "%s %lud\n", getwindow(c->win, "class"), c->win);
+      cls = getwindow(c->win, "class");
+      fprintf(file, "%s %lu\n", cls ? cls : "", c->win);
+      free(cls);
       nclients++;
     }
   }
@@ -1459,7 +1496,7 @@ void writecurmaster(void)
   for (m = mons; m; m = m->next) {
     c = nexttiled(m->clients);
     if (c) {
-      fprintf(file, "%d %lud\n", c->mon->num, c->win);
+      fprintf(file, "%d %lu\n", c->mon->num, c->win);
     }
   }
   fclose(file);
@@ -1524,7 +1561,7 @@ void writecurwin(void)
     debug("can't create file %s", filepath);
     return;
   }
-  fprintf(file, "%d %lud\n", selmon->num, selmon->sel->win);
+  fprintf(file, "%d %lu\n", selmon->num, selmon->sel->win);
   fclose(file);
 }
 
@@ -1556,6 +1593,8 @@ void writeclassname(Client *c)
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
   char filepath[FILE_SIZE];
+  char *name;
+  char *cls;
 
   if (!c) {
     return;
@@ -1567,7 +1606,11 @@ void writeclassname(Client *c)
     return;
   }
 
-  fprintf(file, "%s %s\n", getwindow(c->win, "name"), getwindow(c->win, "class"));
+  name = getwindow(c->win, "name");
+  cls = getwindow(c->win, "class");
+  fprintf(file, "%s %s\n", name ? name : "", cls ? cls : "");
+  free(name);
+  free(cls);
   fclose(file);
 }
 
@@ -1662,7 +1705,13 @@ void zoommon(const Arg *arg)
   m2_tagset = m2->tagset[m2->seltags];
   for (i = 0, m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next, i++) {
+      if (i >= (int)(sizeof(ac) / sizeof(ac[0]))) {
+        break;
+      }
       ac[i] = c->win;
+      if (i >= (int)(sizeof(ac) / sizeof(ac[0]))) {
+        break;
+      }
     }
   }
   for (i = (sizeof(ac) / sizeof(int)) - 1; i >= 0; i--) {
@@ -1678,7 +1727,7 @@ void zoommon(const Arg *arg)
           } else if (c->mon == m2) {
             sendmon(c, m1);
           }
-          ac[i] = '\0';
+          ac[i] = 0;
           c->tags = pctags;
           arrange(c->mon);
         }

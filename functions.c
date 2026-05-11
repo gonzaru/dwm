@@ -28,14 +28,14 @@
 
 /* function declarations */
 void debug(const char *fmt, ...);
-void fakepresskey(Window win, char *typemask, char *strkey);
+void fakepresskey(Window win, const char *typemask, const char *strkey);
 void focusclient(const Arg *arg);
 void focuslast(const Arg *arg);
 void focusmaster(const Arg *arg);
 void focusmonmaster(const Arg *arg);
 void focusstackfull(const Arg *arg);
 char *gettmpdir(void);
-char *getwindow(Window w, char *type);
+char *getwindow(Window w, const char *type);
 int getidfromclass(const Arg *arg);
 Client *getclientfromid(int winid);
 int ismaster(Client *c);
@@ -105,11 +105,10 @@ void debug(const char *fmt, ...)
 }
 
 /* simulate a key press */
-void fakepresskey(Window win, char *typemask, char *strkey)
+void fakepresskey(Window win, const char *typemask, const char *strkey)
 {
-  XEvent ev;
+  XEvent ev = {0};
 
-  memset(&ev, 0x00, sizeof(ev));
   ev.xkey.display = dpy;
   ev.xkey.window = win;
   ev.xkey.subwindow = None;
@@ -235,7 +234,7 @@ char *gettmpdir(void)
 }
 
 /* get the client window (class, name) */
-char *getwindow(Window w, char *type)
+char *getwindow(Window w, const char *type)
 {
   XClassHint ch = { NULL, NULL };
   char *ret = NULL;
@@ -1709,9 +1708,6 @@ void zoommon(const Arg *arg)
         break;
       }
       ac[i] = c->win;
-      if (i >= (int)(sizeof(ac) / sizeof(ac[0]))) {
-        break;
-      }
     }
   }
   for (i = (sizeof(ac) / sizeof(int)) - 1; i >= 0; i--) {

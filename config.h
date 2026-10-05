@@ -61,12 +61,17 @@ static const int lockfullscreen = 1;    /* 1 will force focus on the fullscreen 
 static const int refreshrate = 120;     /* refresh rate (per second) for client move/resize */
 
 void tileright(Monitor *m); /* master on right */
+void deck(Monitor *m);
+void deckright(Monitor *m); /* master on right */
 static const Layout layouts[] = {
   /* symbol     arrange function */
   { "[]=",      tile },      /* first entry is default */
   { "><>",      NULL },      /* no layout function means floating behavior */
   { "[M]",      monocle },
   { "=[]",      tileright }, /* master on right */
+  { "[]:",      deck },
+  { ":[]",      deckright }, /* master right */
+  { NULL,       NULL },
 };
 
 /* custom functions */
@@ -183,6 +188,8 @@ static Key keys[] = {
   { MODKEY|ShiftMask,               XK_Next,         tagmon,             {.i = +1} },
   { MODKEY,                         XK_q,            reloaddwm,          {0} },
   { MODKEY,                         XK_F4,           spawn,              SHCMD("setxkbsw -n && wmbarupdate") },
+  { MODKEY|ShiftMask|ControlMask,   XK_space,        nextlayout,         {0} },
+  { MODKEY|ShiftMask|ControlMask,   XK_BackSpace,    prevlayout,         {0} },
 };
 
 /* button definitions */

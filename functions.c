@@ -12,6 +12,8 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <unistd.h>
+/* append -lXtst to LIBS in config.mk */
+#include <X11/extensions/XTest.h>
 
 /* global macros */
 #define FILE_SIZE 256
@@ -61,6 +63,7 @@ void restoresession(const Arg *arg);
 void savesession(const Arg *arg);
 void scratchpadmon(const Arg *arg);
 void setscratchpad(const Arg *arg);
+void sendkey(const Arg *arg);
 void unsetscratchpad(const Arg *arg);
 void setasmaster(Client *c);
 void setasmastermon(Client *c);
@@ -74,7 +77,6 @@ void showurgent(const Arg *arg);
 void spawnsh(const char *cmd);
 void stackdown(const Arg *arg);
 void stackup(const Arg *arg);
-void tileright(Monitor *m);
 void toggleborder(const Arg *arg);
 void togglefullscr(const Arg *arg);
 void togglemousecursor(const Arg *arg);
@@ -1073,6 +1075,65 @@ void scratchpadmon(const Arg *arg)
   if (!found && scratchcmd) {
     spawnsh(scratchcmd);
   }
+}
+
+/* send key */
+void sendkey(const Arg *arg)
+{
+    XModifierKeymap *modmap;
+    KeyCode mod4_keys[8];
+	KeyCode keycode;
+	KeyCode kc;
+	char keys_return[32];
+	int mod4_num = 0;
+	int i;
+
+	keycode = XKeysymToKeycode(dpy, arg->ui);
+	if (!keycode) {
+		return;
+	}
+
+	/* mod4 (super) */
+	modmap = XGetModifierMapping(dpy);
+	if (!modmap) {
+		return;
+	}
+
+	for (i = 0; i < modmap->max_keypermod && mod4_num < 8; i++) {
+		kc = modmap->modifiermap[Mod4MapIndex * modmap->max_keypermod + i];
+		if (kc != 0) {
+			mod4_keys[mod4_num++] = kc;
+		}
+	}
+	XFreeModifiermap(modmap);
+
+	XQueryKeymap(dpy, keys_return);
+
+	XUngrabKeyboard(dpy, CurrentTime);
+	XSync(dpy, False);
+
+	/* release mod4 */
+	for (i = 0; i < mod4_num; i++) {
+		if (((unsigned char)keys_return[mod4_keys[i] / 8]) & (1 << (mod4_keys[i] % 8))) {
+			XTestFakeKeyEvent(dpy, mod4_keys[i], False, CurrentTime);
+		}
+	}
+
+	XSync(dpy, False);
+
+	XTestFakeKeyEvent(dpy, keycode, True, CurrentTime);
+	XTestFakeKeyEvent(dpy, keycode, False, CurrentTime);
+
+	XSync(dpy, False);
+
+	/* restore mod4 */
+	for (i = 0; i < mod4_num; i++) {
+		if (((unsigned char)keys_return[mod4_keys[i] / 8]) & (1 << (mod4_keys[i] % 8))) {
+			XTestFakeKeyEvent(dpy, mod4_keys[i], True, CurrentTime);
+		}
+	}
+
+	XFlush(dpy);
 }
 
 /* put the client in master area */

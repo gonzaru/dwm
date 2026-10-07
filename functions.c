@@ -1080,60 +1080,30 @@ void scratchpadmon(const Arg *arg)
 /* send key */
 void sendkey(const Arg *arg)
 {
-    XModifierKeymap *modmap;
-    KeyCode mod4_keys[8];
-	KeyCode keycode;
-	KeyCode kc;
-	char keys_return[32];
-	int mod4_num = 0;
-	int i;
+    KeyCode keycode = XKeysymToKeycode(dpy, arg->ui);
+    KeyCode super = XKeysymToKeycode(dpy, XK_Super_L);
 
-	keycode = XKeysymToKeycode(dpy, arg->ui);
-	if (!keycode) {
-		return;
+    if (!keycode) {
+        return;
+    }
+
+    XUngrabKeyboard(dpy, CurrentTime);
+    XSync(dpy, False);
+
+	if (super) {
+		XTestFakeKeyEvent(dpy, super, False, CurrentTime);
+		XSync(dpy, False);
 	}
 
-	/* mod4 (super) */
-	modmap = XGetModifierMapping(dpy);
-	if (!modmap) {
-		return;
+    XTestFakeKeyEvent(dpy, keycode, True, CurrentTime);
+    XTestFakeKeyEvent(dpy, keycode, False, CurrentTime);
+    XSync(dpy, False);
+
+	if (super) {
+		XTestFakeKeyEvent(dpy, super, True, CurrentTime);
 	}
 
-	for (i = 0; i < modmap->max_keypermod && mod4_num < 8; i++) {
-		kc = modmap->modifiermap[Mod4MapIndex * modmap->max_keypermod + i];
-		if (kc != 0) {
-			mod4_keys[mod4_num++] = kc;
-		}
-	}
-	XFreeModifiermap(modmap);
-
-	XQueryKeymap(dpy, keys_return);
-
-	XUngrabKeyboard(dpy, CurrentTime);
-	XSync(dpy, False);
-
-	/* release mod4 */
-	for (i = 0; i < mod4_num; i++) {
-		if (((unsigned char)keys_return[mod4_keys[i] / 8]) & (1 << (mod4_keys[i] % 8))) {
-			XTestFakeKeyEvent(dpy, mod4_keys[i], False, CurrentTime);
-		}
-	}
-
-	XSync(dpy, False);
-
-	XTestFakeKeyEvent(dpy, keycode, True, CurrentTime);
-	XTestFakeKeyEvent(dpy, keycode, False, CurrentTime);
-
-	XSync(dpy, False);
-
-	/* restore mod4 */
-	for (i = 0; i < mod4_num; i++) {
-		if (((unsigned char)keys_return[mod4_keys[i] / 8]) & (1 << (mod4_keys[i] % 8))) {
-			XTestFakeKeyEvent(dpy, mod4_keys[i], True, CurrentTime);
-		}
-	}
-
-	XFlush(dpy);
+    XFlush(dpy);
 }
 
 /* put the client in master area */

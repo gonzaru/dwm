@@ -1081,7 +1081,7 @@ void scratchpadmon(const Arg *arg)
 void sendkey(const Arg *arg)
 {
     KeyCode keycode = XKeysymToKeycode(dpy, arg->ui);
-    KeyCode super = XKeysymToKeycode(dpy, XK_Super_L);
+    KeyCode modcode = (modkeycode == 0) ? XKeysymToKeycode(dpy, XK_Super_L) : modkeycode;
 
     if (!keycode) {
         return;
@@ -1089,16 +1089,16 @@ void sendkey(const Arg *arg)
 
     XUngrabKeyboard(dpy, CurrentTime);
 
-	if (super) {
-		XTestFakeKeyEvent(dpy, super, False, CurrentTime);
-	}
+    if (modcode) {
+        XTestFakeKeyEvent(dpy, modcode, False, CurrentTime);
+    }
 
     XTestFakeKeyEvent(dpy, keycode, True, CurrentTime);
     XTestFakeKeyEvent(dpy, keycode, False, CurrentTime);
 
-	if (super) {
-		XTestFakeKeyEvent(dpy, super, True, CurrentTime);
-	}
+    if (modcode) {
+        XTestFakeKeyEvent(dpy, modcode, True, CurrentTime);
+    }
 
     XFlush(dpy);
 }

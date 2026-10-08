@@ -1088,16 +1088,13 @@ void sendkey(const Arg *arg)
     }
 
     XUngrabKeyboard(dpy, CurrentTime);
-    XSync(dpy, False);
 
 	if (super) {
 		XTestFakeKeyEvent(dpy, super, False, CurrentTime);
-		XSync(dpy, False);
 	}
 
     XTestFakeKeyEvent(dpy, keycode, True, CurrentTime);
     XTestFakeKeyEvent(dpy, keycode, False, CurrentTime);
-    XSync(dpy, False);
 
 	if (super) {
 		XTestFakeKeyEvent(dpy, super, True, CurrentTime);

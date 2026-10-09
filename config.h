@@ -59,7 +59,11 @@ static const int defnmaster  = nmaster; /* default nmaster */
 static const int resizehints = 0;       /* 1 means respect size hints in tiled resizals */
 static const int lockfullscreen = 1;    /* 1 will force focus on the fullscreen window */
 static const int refreshrate = 120;     /* refresh rate (per second) for client move/resize */
+
+#define WITH_XTEST 0                    /* set to 1 to use XTest support, 0 is disabled (used by sendkey) */
+#if WITH_XTEST
 static const int modkeycode = 0;        /* 0 means dynamically guess Super_L, else use exact keycode (e.g. 133) */
+#endif
 
 void tileright(Monitor *m); /* master on right */
 void deck(Monitor *m);

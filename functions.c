@@ -12,8 +12,11 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <unistd.h>
+
+#if WITH_XTEST
 /* append -lXtst to LIBS in config.mk */
 #include <X11/extensions/XTest.h>
+#endif
 
 /* global macros */
 #define FILE_SIZE 256
@@ -1077,6 +1080,7 @@ void scratchpadmon(const Arg *arg)
   }
 }
 
+#if WITH_XTEST
 /* send key */
 void sendkey(const Arg *arg)
 {
@@ -1102,6 +1106,7 @@ void sendkey(const Arg *arg)
 
     XFlush(dpy);
 }
+#endif
 
 /* put the client in master area */
 void setasmaster(Client *cm)

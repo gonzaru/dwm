@@ -34,6 +34,7 @@
 /* function declarations */
 void debug(const char *fmt, ...);
 void fakepresskey(Window win, const char *typemask, const char *strkey);
+void focusclass(const Arg *arg);
 void focusclient(const Arg *arg);
 void focuslast(const Arg *arg);
 void focusmaster(const Arg *arg);
@@ -144,6 +145,74 @@ void fakepresskey(Window win, const char *typemask, const char *strkey)
   XFlush(dpy);
   /* 100ms don't ignore XSendEvent() */
   usleep(100000);
+}
+
+/* focus the clients with the same class name */
+void focusclass(const Arg *arg) {
+  Arg a;
+  Monitor *m;
+  Client *c;
+  Client *target = NULL;
+  Client *next = NULL;
+  Client *prev = NULL;
+  Client *first = NULL;
+  Client *last = NULL;
+  char *selcls = NULL;
+  char *cls = NULL;
+  int match = 0;
+
+  if (!selmon || !selmon->sel) {
+    return;
+  }
+
+  selcls = getwindow(selmon->sel->win, "class");
+  if (!selcls) {
+    return;
+  }
+
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      cls = getwindow(c->win, "class");
+      if (cls && strcmp(cls, selcls) == 0) {
+        if (!first) {
+		  first = c;
+		}
+        last = c;
+		if (c == selmon->sel) {
+          match = 1;
+        } else {
+          if (!match) {
+            prev = c;
+          } else if (!next) {
+            next = c;
+          }
+        }
+      }
+      if (cls) {
+        free(cls);
+	  }
+    }
+  }
+  free(selcls);
+
+  if (arg->i > 0) {
+    target = next ? next : first;
+  } else {
+    target = prev ? prev : last;
+  }
+
+  if (target && target != selmon->sel) {
+    if (target->mon != selmon) {
+      unfocus(selmon->sel, True);
+      selmon = target->mon;
+    }
+    if (!(target->tags & selmon->tagset[selmon->seltags])) {
+      a.ui = target->tags;
+      view(&a);
+    }
+    focus(target);
+    arrange(target->mon);
+  }
 }
 
 /* focus the client from the window class or window id */

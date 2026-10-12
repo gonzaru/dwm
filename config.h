@@ -149,6 +149,8 @@ static Key keys[] = {
   { MODKEY|ShiftMask,               XK_k,            stackup,            {0} },
   { MODKEY|ControlMask,             XK_j,            focusstackfull,     {.i = +1 } },
   { MODKEY|ControlMask,             XK_k,            focusstackfull,     {.i = -1 } },
+  { MODKEY|ControlMask,             XK_Tab,          focusclass,         {.i = +1 } },
+  { MODKEY|ControlMask|ShiftMask,   XK_Tab,          focusclass,         {.i = -1 } },
   { MODKEY|ShiftMask,               XK_Escape,       spawn,              SHCMD("xkill") },
   { MODKEY|ShiftMask|ControlMask,   XK_Escape,       spawn,              SHCMD("wmkill") },
   { MODKEY|ShiftMask,               XK_p,            spawn,              SHCMD("gmrun") },

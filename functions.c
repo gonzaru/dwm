@@ -39,7 +39,9 @@ void focusclient(const Arg *arg);
 void focuslast(const Arg *arg);
 void focusmaster(const Arg *arg);
 void focusmonmaster(const Arg *arg);
+void focusnum(const Arg *arg);
 void focusstackfull(const Arg *arg);
+void focusvisible(const Arg *arg);
 char *gettmpdir(void);
 char *getwindow(Window w, const char *type);
 int getidfromclass(const Arg *arg);
@@ -287,6 +289,33 @@ void focusmonmaster(const Arg *arg)
   focusmaster(arg);
 }
 
+/* focus the tiled client by its index number */
+void focusnum(const Arg *arg)
+{
+  Client *c;
+  Client *next;
+  int i;
+
+  if (!selmon || !selmon->clients) {
+    return;
+  }
+
+  c = nexttiled(selmon->clients);
+  if (!c) {
+    return;
+  }
+
+  for (i = 0; i < arg->i; i++) {
+    next = nexttiled(c->next);
+    if (!next) {
+      break;
+    }
+    c = next;
+  }
+
+  focus(c);
+}
+
 /* focus stack on the fullcreen window */
 void focusstackfull(const Arg *arg)
 {
@@ -294,6 +323,56 @@ void focusstackfull(const Arg *arg)
     setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
   }
   focusstack(arg);
+}
+
+/* focus through all the visible clients (multi monitor) */
+void focusvisible(const Arg *arg)
+{
+  Monitor *m;
+  Client *c = NULL;
+  Client *first = NULL;
+  Client *last = NULL;
+  Client *prev = NULL;
+  Client *prevvis = NULL;
+  Client *next = NULL;
+  int match = 0;
+
+  if (!arg || !selmon || (selmon->sel && selmon->sel->isfullscreen && lockfullscreen)) {
+    return;
+  }
+
+  for (m = mons; m; m = m->next) {
+    for (c = m->clients; c; c = c->next) {
+      if (c == selmon->sel) {
+         prev = prevvis;
+         match = 1;
+      } else if (ISVISIBLE(c)) {
+        if (!first) {
+          first = c;
+        }
+       if (match && !next) {
+          next = c;
+       }
+       prevvis = c;
+       last = c;
+      }
+    }
+  }
+
+  /* direction (-1 prev, +1 next) */
+  if (arg->i > 0) {
+    c = next ? next : first;
+  } else {
+    c = prev ? prev : last;
+  }
+
+  if (c && c != selmon->sel) {
+    if (c->mon != selmon) {
+	  unfocus(selmon->sel, True);
+	  selmon = c->mon;
+	}
+	focus(c);
+  }
 }
 
 /* get the tmpdir */

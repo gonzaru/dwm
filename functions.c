@@ -106,6 +106,10 @@ void debug(const char *fmt, ...)
 {
   va_list ap;
 
+  if (!fmt) {
+    return;
+  }
+
   va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);
   va_end(ap);
@@ -117,18 +121,26 @@ void fakepresskey(Window win, const char *typemask, const char *strkey)
 {
   XEvent ev = {0};
 
+  if (!win || !strkey) {
+    return;
+  }
+
   ev.xkey.display = dpy;
   ev.xkey.window = win;
+  ev.xkey.root = root;
   ev.xkey.subwindow = None;
+  ev.xkey.time = CurrentTime;
 
-  if (strcmp(typemask, "ControlMask") == 0) {
-    ev.xkey.state = ControlMask;
-  } else if (strcmp(typemask, "ShiftMask") == 0) {
-    ev.xkey.state = ShiftMask;
-  } else if (strcmp(typemask, "Mod1Mask") == 0) {
-    ev.xkey.state = Mod1Mask;
-  } else if (strcmp(typemask, "Mod4Mask") == 0) {
-    ev.xkey.state = Mod4Mask;
+  if (typemask) {
+    if (strcmp(typemask, "ControlMask") == 0) {
+      ev.xkey.state = ControlMask;
+    } else if (strcmp(typemask, "ShiftMask") == 0) {
+      ev.xkey.state = ShiftMask;
+    } else if (strcmp(typemask, "Mod1Mask") == 0) {
+      ev.xkey.state = Mod1Mask;
+    } else if (strcmp(typemask, "Mod4Mask") == 0) {
+      ev.xkey.state = Mod4Mask;
+    }
   }
 
   ev.xkey.keycode = XKeysymToKeycode(dpy, XStringToKeysym(strkey));
@@ -153,14 +165,8 @@ void fakepresskey(Window win, const char *typemask, const char *strkey)
 void focusclass(const Arg *arg) {
   Arg a;
   Monitor *m;
-  Client *c;
-  Client *target = NULL;
-  Client *next = NULL;
-  Client *prev = NULL;
-  Client *first = NULL;
-  Client *last = NULL;
-  char *selcls = NULL;
-  char *cls = NULL;
+  Client *c = NULL, *target = NULL, *next = NULL, *prev = NULL, *first = NULL, *last = NULL;
+  char *selcls = NULL, *cls = NULL;
   int match = 0;
 
   if (!selmon || !selmon->sel) {
@@ -177,22 +183,20 @@ void focusclass(const Arg *arg) {
       cls = getwindow(c->win, "class");
       if (cls && strcmp(cls, selcls) == 0) {
         if (!first) {
-		  first = c;
-		}
+          first = c;
+        }
         last = c;
-		if (c == selmon->sel) {
+        if (c == selmon->sel) {
           match = 1;
-        } else {
-          if (!match) {
-            prev = c;
-          } else if (!next) {
-            next = c;
-          }
+        } else if (!match) {
+          prev = c;
+        } else if (!next) {
+          next = c;
         }
       }
       if (cls) {
         free(cls);
-	  }
+      }
     }
   }
   free(selcls);
@@ -205,7 +209,7 @@ void focusclass(const Arg *arg) {
 
   if (target && target != selmon->sel) {
     if (target->mon != selmon) {
-      unfocus(selmon->sel, True);
+      unfocus(selmon->sel, 1);
       selmon = target->mon;
     }
     if (!(target->tags & selmon->tagset[selmon->seltags])) {
@@ -226,14 +230,20 @@ void focusclient(const Arg *arg)
   char *cls;
   int match;
 
+  if (!arg || !arg->v) {
+    return;
+  }
+
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
       cls = getwindow(c->win, "class");
       match = (cls && strcmp(cls, arg->v) == 0) || (c->win == atoi(arg->v));
-      free(cls);
+      if (cls) {
+        free(cls);
+      }
       if (match) {
         if (m != selmon) {
-          unfocus(selmon->sel, True);
+          unfocus(selmon->sel, 1);
           selmon = c->mon;
         }
         a.ui = c->tags;
@@ -249,10 +259,9 @@ void focusclient(const Arg *arg)
 /* focus the last client */
 void focuslast(const Arg *arg)
 {
-  Client *c;
-  Client *cl;
+  Client *c, *cl;
 
-  if (!selmon->sel || selmon->sel->isfloating) {
+  if (!selmon || !selmon->sel || selmon->sel->isfloating) {
     return;
   }
 
@@ -272,7 +281,7 @@ void focusmaster(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon->sel || !selmon->nmaster) {
+  if (!selmon || !selmon->sel || !selmon->nmaster) {
     return;
   }
 
@@ -285,6 +294,10 @@ void focusmaster(const Arg *arg)
 /* focus the master client (multi monitor) */
 void focusmonmaster(const Arg *arg)
 {
+  if (!arg) {
+    return;
+  }
+
   focusmon(arg);
   focusmaster(arg);
 }
@@ -292,6 +305,10 @@ void focusmonmaster(const Arg *arg)
 /* focus stack on the fullcreen window */
 void focusstackfull(const Arg *arg)
 {
+  if (!arg || !selmon) {
+    return;
+  }
+
   if (selmon->sel && selmon->sel->isfullscreen) {
     setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
   }
@@ -302,12 +319,7 @@ void focusstackfull(const Arg *arg)
 void focusstackmon(const Arg *arg)
 {
   Monitor *m;
-  Client *c = NULL;
-  Client *first = NULL;
-  Client *last = NULL;
-  Client *prev = NULL;
-  Client *prevvis = NULL;
-  Client *next = NULL;
+  Client *c = NULL, *first = NULL, *last = NULL, *prev = NULL, *prevvis = NULL, *next = NULL;
   int match = 0;
 
   if (!arg || !selmon || (selmon->sel && selmon->sel->isfullscreen && lockfullscreen)) {
@@ -317,17 +329,17 @@ void focusstackmon(const Arg *arg)
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
       if (c == selmon->sel) {
-         prev = prevvis;
-         match = 1;
+        prev = prevvis;
+        match = 1;
       } else if (ISVISIBLE(c)) {
         if (!first) {
           first = c;
         }
-       if (match && !next) {
+        if (match && !next) {
           next = c;
-       }
-       prevvis = c;
-       last = c;
+        }
+        prevvis = c;
+        last = c;
       }
     }
   }
@@ -341,21 +353,20 @@ void focusstackmon(const Arg *arg)
 
   if (c && c != selmon->sel) {
     if (c->mon != selmon) {
-	  unfocus(selmon->sel, True);
-	  selmon = c->mon;
-	}
-	focus(c);
+      unfocus(selmon->sel, 1);
+      selmon = c->mon;
+    }
+    focus(c);
   }
 }
 
 /* focus stack by its index number */
 void focusstacknum(const Arg *arg)
 {
-  Client *c;
-  Client *next;
+  Client *c, *next;
   int i;
 
-  if (!selmon || !selmon->clients) {
+  if (!arg || !selmon || !selmon->clients) {
     return;
   }
 
@@ -392,6 +403,10 @@ char *getwindow(Window w, const char *type)
   XClassHint ch = { NULL, NULL };
   char *ret = NULL;
 
+  if (!type) {
+    return NULL;
+  }
+
   if (XGetClassHint(dpy, w, &ch)) {
     if (strcmp(type, "class") == 0 && ch.res_class) {
       ret = strdup(ch.res_class);
@@ -416,11 +431,17 @@ int getidfromclass(const Arg *arg)
   char *cls;
   int match;
 
+  if (!arg || !arg->v) {
+    return 0;
+  }
+
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
       cls = getwindow(c->win, "class");
       match = (cls && strcmp(cls, arg->v) == 0);
-      free(cls);
+      if (cls) {
+        free(cls);
+      }
       if (match) {
         return c->win;
       }
@@ -442,7 +463,7 @@ Client *getclientfromid(int winid)
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
       if (c->win == winid) {
-         return c;
+        return c;
       }
     }
   }
@@ -465,6 +486,10 @@ int ismaster(Client *cm)
 /* check if the tile is on the right position (default left) */
 int istileright(void)
 {
+  if (!selmon) {
+    return 0;
+  }
+
   /* return strcmp(selmon->ltsymbol, "=[]") == 0; */
   return selmon->lt[selmon->sellt]->arrange == tileright;
 }
@@ -474,7 +499,7 @@ void killunsel(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon->sel) {
+  if (!selmon || !selmon->sel) {
     return;
   }
 
@@ -525,8 +550,11 @@ int layoutidx(const char *sym)
 void nexttag(const Arg *arg)
 {
   Arg a;
-  unsigned int curtag;
-  unsigned int nextag;
+  unsigned int curtag, nextag;
+
+  if (!selmon) {
+    return;
+  }
 
   curtag = selmon->tagset[selmon->seltags];
   nextag = curtag << 1;
@@ -542,6 +570,10 @@ void nextlayout(const Arg *arg)
 {
   Arg a;
   Layout *l;
+
+  if (!selmon) {
+    return;
+  }
 
   for (l = (Layout *)layouts; l->symbol && l != selmon->lt[selmon->sellt]; l++) {
     ;
@@ -567,30 +599,38 @@ void pressmousecursor(const Arg *arg)
   XEvent event;
   int button_n = 0;
 
+  if (!arg || !arg->v) {
+    return;
+  }
+
   /*
-  button 1 = left
-  button 2 = middle
-  button 3 = right
-  button 4 = scroll up
-  button 5 = scroll down
-  button 6 = scroll left
-  button 7 = scroll right
-  */
+    button 1 = left
+    button 2 = middle
+    button 3 = right
+    button 4 = scroll up
+    button 5 = scroll down
+    button 6 = scroll left
+    button 7 = scroll right
+   */
 
   if (strcmp(arg->v, "leftclick") == 0) {
     button_n = 1;
-  } else if ((strcmp(arg->v, "middleclick") == 0)) {
+  } else if (strcmp(arg->v, "middleclick") == 0) {
     button_n = 2;
-  } else if ((strcmp(arg->v, "rightclick") == 0)) {
+  } else if (strcmp(arg->v, "rightclick") == 0) {
     button_n = 3;
-  } else if ((strcmp(arg->v, "scrollupclick") == 0)) {
+  } else if (strcmp(arg->v, "scrollupclick") == 0) {
     button_n = 4;
-  } else if ((strcmp(arg->v, "scrolldownclick") == 0)) {
+  } else if (strcmp(arg->v, "scrolldownclick") == 0) {
     button_n = 5;
-  } else if ((strcmp(arg->v, "scrollleftclick") == 0)) {
+  } else if (strcmp(arg->v, "scrollleftclick") == 0) {
     button_n = 6;
-  } else if ((strcmp(arg->v, "scrollrightclick") == 0)) {
+  } else if (strcmp(arg->v, "scrollrightclick") == 0) {
     button_n = 7;
+  }
+
+  if (!button_n) {
+    return;
   }
 
   memset(&event, 0x00, sizeof(event));
@@ -629,8 +669,11 @@ void pressmousecursor(const Arg *arg)
 void prevlayout(const Arg *arg)
 {
   Arg a;
-  Layout *l;
-  Layout *p;
+  Layout *l, *p;
+
+  if (!selmon) {
+    return;
+  }
 
   for (l = (Layout *)layouts; l->symbol && l != selmon->lt[selmon->sellt]; l++) {
     ;
@@ -658,8 +701,11 @@ void prevlayout(const Arg *arg)
 void prevtag(const Arg *arg)
 {
   Arg a;
-  unsigned int curtag;
-  unsigned int prevtag;
+  unsigned int curtag, prevtag;
+
+  if (!selmon) {
+    return;
+  }
 
   curtag = selmon->tagset[selmon->seltags];
   prevtag = curtag >> 1;
@@ -673,13 +719,17 @@ void prevtag(const Arg *arg)
 /* set bar */
 void putcurbar(void)
 {
+  Monitor *m;
   FILE *file;
   char filepath[FILE_SIZE];
   char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  Monitor *m;
   int fmon, fshowbar, ftopbar;
+
+  if (!user) {
+    return;
+  }
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-curbar.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
@@ -687,17 +737,15 @@ void putcurbar(void)
     return;
   }
 
-  while (!feof(file)) {
-    if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %d %d", &fmon, &fshowbar, &ftopbar);
-      for (m = mons; m; m = m->next) {
-        if (m->num == fmon) {
-          m->showbar = fshowbar;
-          m->topbar = ftopbar;
-          updatebarpos(m);
-          XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
-          arrange(m);
-        }
+  while (fgets(line, sizeof(line), file)) {
+    sscanf(line, "%d %d %d", &fmon, &fshowbar, &ftopbar);
+    for (m = mons; m; m = m->next) {
+      if (m->num == fmon) {
+        m->showbar = fshowbar;
+        m->topbar = ftopbar;
+        updatebarpos(m);
+        XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
+        arrange(m);
       }
     }
   }
@@ -707,15 +755,18 @@ void putcurbar(void)
 /* set layout */
 void putcurlayout(void)
 {
+  Monitor *m;
   FILE *file;
   char filepath[FILE_SIZE];
   char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  Monitor *m;
-  int idx;
-  int fmon;
+  int idx, fmon;
   char fltsymbol[16];
+
+  if (!user) {
+    return;
+  }
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-curlayout.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
@@ -723,15 +774,13 @@ void putcurlayout(void)
     return;
   }
 
-  while (!feof(file)) {
-    if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %15s", &fmon, fltsymbol);
-      for (m = mons; m; m = m->next) {
-        if (m->num == fmon) {
-          idx = layoutidx(fltsymbol);
-          if (idx >= 0) {
-            setlayoutmon(&((Arg) { .v = &layouts[idx] }), m);
-          }
+  while (fgets(line, sizeof(line), file)) {
+    sscanf(line, "%d %15s", &fmon, fltsymbol);
+    for (m = mons; m; m = m->next) {
+      if (m->num == fmon) {
+        idx = layoutidx(fltsymbol);
+        if (idx >= 0) {
+          setlayoutmon(&((Arg) { .v = &layouts[idx] }), m);
         }
       }
     }
@@ -742,15 +791,19 @@ void putcurlayout(void)
 /* set as master to the latest current master window */
 void putcurmaster(void)
 {
+  Monitor *m;
+  Client *c;
   FILE *file;
   char filepath[FILE_SIZE];
   char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  Monitor *m;
-  Client *c;
   int fmon;
   long unsigned int fwin;
+
+  if (!user) {
+    return;
+  }
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
@@ -758,21 +811,21 @@ void putcurmaster(void)
     return;
   }
 
-  while (!feof(file)) {
-    if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %lu", &fmon, &fwin);
-      for (m = mons; m; m = m->next) {
-        for (c = m->clients; c; c = c->next) {
-          if (c->win == fwin) {
-            if (c->mon != selmon) {
-              unfocus(selmon->sel, True);
-              selmon = c->mon;
-              focus(NULL);
+  while (fgets(line, sizeof(line), file)) {
+    sscanf(line, "%d %lu", &fmon, &fwin);
+    for (m = mons; m; m = m->next) {
+      for (c = m->clients; c; c = c->next) {
+        if (c->win == fwin) {
+          if (c->mon != selmon) {
+            if (selmon) {
+              unfocus(selmon->sel, 1);
             }
-            setasmaster(c);
-            arrange(c->mon);
-            break;
+            selmon = c->mon;
+            focus(NULL);
           }
+          setasmaster(c);
+          arrange(c->mon);
+          break;
         }
       }
     }
@@ -783,13 +836,17 @@ void putcurmaster(void)
 /* go to the latest monitor */
 void putcurmon(void)
 {
+  Monitor *m;
   FILE *file;
   char filepath[FILE_SIZE];
   char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  Monitor *m;
   int fmon;
+
+  if (!user) {
+    return;
+  }
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmon.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
@@ -797,12 +854,14 @@ void putcurmon(void)
     return;
   }
 
-  if (fgets(line, sizeof line - 1, file)) {
+  if (fgets(line, sizeof(line), file)) {
     sscanf(line, "%d", &fmon);
     for (m = mons; m; m = m->next) {
       if (m->num == fmon) {
         if (m != selmon) {
-          unfocus(selmon->sel, True);
+          if (selmon) {
+            unfocus(selmon->sel, 1);
+          }
           selmon = m;
           focus(NULL);
         }
@@ -817,15 +876,18 @@ void putcurmon(void)
 /* go to the latest monitor current tag */
 void putcurtag(void)
 {
+  Arg a;
+  Monitor *m;
   FILE *file;
   char filepath[FILE_SIZE];
   char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  Monitor *m;
-  int fmon;
-  int ftag;
-  Arg a;
+  int fmon, ftag;
+
+  if (!user) {
+    return;
+  }
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
@@ -833,23 +895,23 @@ void putcurtag(void)
     return;
   }
 
-  while (!feof(file)) {
-    if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %d", &fmon, &ftag);
-      for (m = mons; m; m = m->next) {
-        if (m->num == fmon) {
-          if (m != selmon) {
-            unfocus(selmon->sel, True);
-            selmon = m;
-            focus(NULL);
+  while (fgets(line, sizeof(line), file)) {
+    sscanf(line, "%d %d", &fmon, &ftag);
+    for (m = mons; m; m = m->next) {
+      if (m->num == fmon) {
+        if (m != selmon) {
+          if (selmon) {
+            unfocus(selmon->sel, 1);
           }
-          if (m->tagset[m->seltags] != ftag) {
-            m->tagset[m->seltags] = ftag;
-          }
-          a.ui = ftag;
-          view(&a);
-          arrange(m);
+          selmon = m;
+          focus(NULL);
         }
+        if (m->tagset[m->seltags] != ftag) {
+          m->tagset[m->seltags] = ftag;
+        }
+        a.ui = ftag;
+        view(&a);
+        arrange(m);
       }
     }
   }
@@ -859,16 +921,20 @@ void putcurtag(void)
 /* focus to the latest current window */
 void putcurwin(void)
 {
+  Arg a;
+  Monitor *m;
+  Client *c;
   FILE *file;
   char filepath[FILE_SIZE];
   char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  Arg a;
-  Monitor *m;
-  Client *c;
   int fmon;
   long unsigned int fwin;
+
+  if (!user) {
+    return;
+  }
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
@@ -876,13 +942,15 @@ void putcurwin(void)
     return;
   }
 
-  if (fgets(line, sizeof line - 1, file)) {
+  if (fgets(line, sizeof(line), file)) {
     sscanf(line, "%d %lu", &fmon, &fwin);
     for (m = mons; m; m = m->next) {
       for (c = m->clients; c; c = c->next) {
         if (c->win == fwin) {
           if (c->mon != selmon) {
-            unfocus(selmon->sel, True);
+            if (selmon) {
+              unfocus(selmon->sel, 1);
+            }
             selmon = c->mon;
             focus(NULL);
           }
@@ -913,21 +981,23 @@ void putfilemfact(const Arg *arg)
   int fmon;
   float fmfact;
 
+  if (!user) {
+    return;
+  }
+
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
   }
 
-  while (!feof(file)) {
-    if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %f", &fmon, &fmfact);
-      for (m = mons; m; m = m->next) {
-        if (m->num == fmon) {
-          if (m->mfact != fmfact) {
-            m->mfact = fmfact;
-            arrange(m);
-          }
+  while (fgets(line, sizeof(line), file)) {
+    sscanf(line, "%d %f", &fmon, &fmfact);
+    for (m = mons; m; m = m->next) {
+      if (m->num == fmon) {
+        if (m->mfact != fmfact) {
+          m->mfact = fmfact;
+          arrange(m);
         }
       }
     }
@@ -946,12 +1016,12 @@ void putkeeptags(void)
   char line[LINE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  int fmon;
-  int ftag;
-  int fmaster;
-  int fsel;
-  int ffloating;
+  int fmon, ftag, fmaster, fsel, ffloating;
   long unsigned int fwin;
+
+  if (!user) {
+    return;
+  }
 
   snprintf(filepath, sizeof filepath, "%s/%s-dwm-state-tags.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
@@ -959,33 +1029,34 @@ void putkeeptags(void)
     return;
   }
 
-  while (!feof(file)) {
-    if (fgets(line, sizeof line - 1, file)) {
-      sscanf(line, "%d %d %d %d %d %lu", &fmon, &ftag, &fmaster, &fsel, &ffloating, &fwin);
-      for (m = mons; m; m = m->next) {
-        for (c = m->clients; c; c = c->next) {
-          if (c->win == fwin) {
-            if (c->mon->num != fmon) {
-              a.i = c->mon->num;
-              sendmon(c, dirtomon(a.i));
-            }
-            if (c->tags != ftag) {
-              c->tags = ftag;
-            }
-            if (ffloating && c->isfloating != ffloating) {
-              c->isfloating = ffloating;
-            }
-            if (fsel) {
-              focus(c);
-            }
-            arrange(c->mon);
+  while (fgets(line, sizeof(line), file)) {
+    sscanf(line, "%d %d %d %d %d %lu", &fmon, &ftag, &fmaster, &fsel, &ffloating, &fwin);
+    for (m = mons; m; m = m->next) {
+      for (c = m->clients; c; c = c->next) {
+        if (c->win == fwin) {
+          if (c->mon->num != fmon) {
+            a.i = c->mon->num;
+            sendmon(c, dirtomon(a.i));
           }
+          if (c->tags != ftag) {
+            c->tags = ftag;
+          }
+          if (ffloating && c->isfloating != ffloating) {
+            c->isfloating = ffloating;
+          }
+          if (fsel) {
+            focus(c);
+          }
+          arrange(c->mon);
         }
       }
     }
   }
   fclose(file);
-  arrange(selmon);
+
+  if (selmon) {
+    arrange(selmon);
+  }
 }
 
 /* reload the default browser */
@@ -993,17 +1064,17 @@ void reloadbrowser(const Arg *arg)
 {
   Monitor *m;
   Client *cc, *c;
-
   Window w_ret;
-  int current_x, current_y;
-  int win_x, win_y;
-  int browser_x, browser_y;
+  int current_x, current_y, win_x, win_y, browser_x, browser_y, match;
   unsigned int mask_ret;
   char *cls;
-  int match;
+
+  if (!arg || !arg->v || !selmon) {
+    return;
+  }
 
   /* get current x, y mouse pointer */
-  if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &current_x, &current_y, &win_x, &win_y, &mask_ret)) {
+  if (!XQueryPointer(dpy, root, &w_ret, &w_ret, &current_x, &current_y, &win_x, &win_y, &mask_ret)) {
     return;
   }
 
@@ -1045,6 +1116,10 @@ void savesession(const Arg *arg)
   char *tmpdir = gettmpdir();
   char *cls;
 
+  if (!user) {
+    return;
+  }
+
   writecurmon();
   writecurlayout();
   writecurbar();
@@ -1066,7 +1141,7 @@ void savesession(const Arg *arg)
     for (c = m->clients; c; c = c->next) {
       cls = getwindow(c->win, "class");
       fprintf(file, "%d %d %d %d %d %lu %s %s\n", c->mon->num,
-        c->tags, (ismaster(c) == 1) ? 1 : 0, (c == selmon->sel) ? 1 : 0,
+        c->tags, (ismaster(c) == 1) ? 1 : 0, (selmon && c == selmon->sel) ? 1 : 0,
         (c->isfloating) ? 1 : 0, c->win, cls ? cls : "", c->name);
       free(cls);
     }
@@ -1077,12 +1152,16 @@ void savesession(const Arg *arg)
 /* restore the session */
 void restoresession(const Arg *arg)
 {
+  FILE *lock;
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  FILE *lock;
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-session.lock", tmpdir, user);
+  if (!user) {
+    return;
+  }
+
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-session.lock", tmpdir, user);
   if ((lock = fopen(filepath, "r"))) {
     fclose(lock);
     spawnsh("echo 'dwm session already executed!' | dmenu");
@@ -1126,11 +1205,15 @@ void restoresession(const Arg *arg)
 void setscratchpad(const Arg *arg) {
   Monitor *m;
   Client *c;
-  char *scratchclass = ((char **)arg->v)[1];
-  char *cls;
+  char *scratchclass, *cls;
   int match;
 
-  if (!selmon->sel) {
+  if (!arg || !arg->v || !selmon || !selmon->sel) {
+    return;
+  }
+
+  scratchclass = ((char **)arg->v)[1];
+  if (!scratchclass) {
     return;
   }
 
@@ -1152,7 +1235,7 @@ void setscratchpad(const Arg *arg) {
 /* unset the scratchpad */
 void unsetscratchpad(const Arg *arg) {
   FILE *file;
-  char *scratchclass = ((char **)arg->v)[1];
+  char *scratchclass;
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
   char filepath[FILE_SIZE];
@@ -1160,13 +1243,18 @@ void unsetscratchpad(const Arg *arg) {
   char prevscratchclass[FILE_SIZE];
   char prevscratchname[FILE_SIZE];
   char *cls;
-  char match;
+  int match;
 
-  if (!selmon->sel) {
+  if (!arg || !arg->v || !selmon || !selmon->sel || !user) {
     return;
   }
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-nameclass.txt", tmpdir, user);
+  scratchclass = ((char **)arg->v)[1];
+  if (!scratchclass) {
+    return;
+  }
+
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-nameclass.txt", tmpdir, user);
   if (!(file = fopen(filepath, "r"))) {
     debug("can't open file %s", filepath);
     return;
@@ -1175,8 +1263,9 @@ void unsetscratchpad(const Arg *arg) {
   cls = getwindow(selmon->sel->win, "class");
   match = (cls && strcmp(scratchclass, cls) == 0);
   free(cls);
+
   if (match) {
-    if (fgets(line, sizeof line - 1, file)) {
+    if (fgets(line, sizeof(line), file)) {
       sscanf(line, "%s %s", prevscratchname, prevscratchclass);
       setwindownameclass(selmon->sel->win, prevscratchname, prevscratchclass);
     }
@@ -1191,11 +1280,20 @@ void scratchpadmon(const Arg *arg)
 {
   Monitor *m;
   Client *c;
-  const char *scratchcmd = ((char **)arg->v)[0];
-  const char *scratchclass = ((char **)arg->v)[1];
-  int found = 0;
+  const char *scratchcmd;
+  const char *scratchclass;
   char *cls;
-  int match;
+  int found = 0, match;
+
+  if (!arg || !arg->v || !selmon) {
+    return;
+  }
+
+  scratchcmd = ((char **)arg->v)[0];
+  scratchclass = ((char **)arg->v)[1];
+  if (!scratchcmd || !scratchclass) {
+    return;
+  }
 
   for (m = mons; m && !found; m = m->next) {
     for (c = m->clients; c && !found; c = c->next) {
@@ -1222,6 +1320,7 @@ void scratchpadmon(const Arg *arg)
       }
     }
   }
+
   /* run it if not present */
   if (!found && scratchcmd) {
     spawnsh(scratchcmd);
@@ -1232,27 +1331,33 @@ void scratchpadmon(const Arg *arg)
 /* send key */
 void sendkey(const Arg *arg)
 {
-    KeyCode keycode = XKeysymToKeycode(dpy, arg->ui);
-    KeyCode modcode = (modkeycode == 0) ? XKeysymToKeycode(dpy, XK_Super_L) : modkeycode;
+  KeyCode keycode, modcode;
 
-    if (!keycode) {
-        return;
-    }
+  if (!arg) {
+    return;
+  }
 
-    XUngrabKeyboard(dpy, CurrentTime);
+  keycode = XKeysymToKeycode(dpy, arg->ui);
+  modcode = (modkeycode == 0) ? XKeysymToKeycode(dpy, XK_Super_L) : modkeycode;
 
-    if (modcode) {
-        XTestFakeKeyEvent(dpy, modcode, False, CurrentTime);
-    }
+  if (!keycode) {
+    return;
+  }
 
-    XTestFakeKeyEvent(dpy, keycode, True, CurrentTime);
-    XTestFakeKeyEvent(dpy, keycode, False, CurrentTime);
+  XUngrabKeyboard(dpy, CurrentTime);
 
-    if (modcode) {
-        XTestFakeKeyEvent(dpy, modcode, True, CurrentTime);
-    }
+  if (modcode) {
+    XTestFakeKeyEvent(dpy, modcode, False, CurrentTime);
+  }
 
-    XFlush(dpy);
+  XTestFakeKeyEvent(dpy, keycode, True, CurrentTime);
+  XTestFakeKeyEvent(dpy, keycode, False, CurrentTime);
+
+  if (modcode) {
+    XTestFakeKeyEvent(dpy, modcode, True, CurrentTime);
+  }
+
+  XFlush(dpy);
 }
 #endif
 
@@ -1262,15 +1367,15 @@ void setasmaster(Client *cm)
   Client *c;
   int nc = 0;
 
-  if (!cm || cm->isfloating) {
+  if (!selmon || !cm || cm->isfloating) {
     return;
   }
 
   /* check if has more than 1 client */
   for (c = selmon->clients; c && nc < 2; c = c->next) {
-      if (ISVISIBLE(c) && !c->isfloating) {
-        nc++;
-      }
+    if (ISVISIBLE(c) && !c->isfloating) {
+      nc++;
+    }
   }
   if (nc >= 2) {
     pop(cm);
@@ -1283,7 +1388,7 @@ void setasmastermon(Client *cm)
   Monitor *m;
   Client *c;
 
-  if (!cm || cm->isfloating) {
+  if (!selmon || !cm || cm->isfloating) {
     return;
   }
 
@@ -1310,7 +1415,7 @@ void setasmastermon(Client *cm)
 /* set the default mfact */
 void setdefmfact(const Arg *arg)
 {
-  if (!arg || !selmon->lt[selmon->sellt]->arrange) {
+  if (!arg || !selmon || !selmon->lt[selmon->sellt]->arrange) {
     return;
   }
 
@@ -1326,14 +1431,19 @@ void setdefmfact(const Arg *arg)
 /* set the layout by monitor */
 void setlayoutmon(const Arg *arg, Monitor *m)
 {
+  if (!m) {
+    return;
+  }
+
   if (!arg || !arg->v || arg->v != m->lt[m->sellt]) {
     m->sellt ^= 1;
   }
   if (arg && arg->v) {
     m->lt[m->sellt] = (Layout *)arg->v;
   }
-  strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
-  m->ltsymbol[sizeof m->ltsymbol - 1] = '\0';
+  strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof(m->ltsymbol));
+  m->ltsymbol[sizeof(m->ltsymbol) - 1] = '\0';
+
   if (m->sel) {
     arrange(m);
   } else {
@@ -1344,6 +1454,10 @@ void setlayoutmon(const Arg *arg, Monitor *m)
 /* set the default nmaster */
 void setdefnmaster(const Arg *arg)
 {
+  if (!selmon) {
+    return;
+  }
+
   selmon->nmaster = DEFAULT_NMASTER;
   arrange(selmon);
 }
@@ -1351,7 +1465,13 @@ void setdefnmaster(const Arg *arg)
 /* set mfact wrapper */
 void setmfactwrp(const Arg *arg)
 {
-  Arg a = *arg;
+  Arg a;
+
+  if (!arg || !selmon) {
+    return;
+  }
+
+  a = *arg;
 
   if (istileright()) {
     a.f = -a.f;
@@ -1363,6 +1483,10 @@ void setmfactwrp(const Arg *arg)
 int setwindownameclass(Window w, char *sn, char *sc)
 {
   XClassHint ch = { NULL, NULL };
+
+  if (!w || !sn || !sc) {
+    return 0;
+  }
 
   ch.res_name = sn;
   ch.res_class = sc;
@@ -1381,16 +1505,20 @@ void showapps(const Arg *arg)
   char filepath1[FILE_SIZE];
   char filepath2[FILE_SIZE];
   char line[LINE_SIZE];
-  char cmd[sizeof filepath1 + sizeof filepath2 + 37]; /* 37 dmenu|sort|cut */
-  int nclients = 0;
-  int winid = 0;
+  char cmd[sizeof(filepath1) + sizeof(filepath2) + 37]; /* 37 dmenu|sort|cut */
+  int nclients = 0, winid = 0;
   char *cls;
 
-  snprintf(filepath1, sizeof filepath1, "%s/%s-dwm-showapps-list.txt", tmpdir, user);
+  if (!arg || !arg->v || !user || !tmpdir) {
+    return;
+  }
+
+  snprintf(filepath1, sizeof(filepath1), "%s/%s-dwm-showapps-list.txt", tmpdir, user);
   if (!(file = fopen(filepath1, "w+"))) {
     debug("can't create file %s", filepath1);
     return;
   }
+
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
       cls = getwindow(c->win, "class");
@@ -1406,10 +1534,11 @@ void showapps(const Arg *arg)
     return;
   }
 
-  snprintf(filepath2, sizeof filepath2, "%s/%s-dwm-showapps-select.txt", tmpdir, user);
-  snprintf(cmd, sizeof cmd, "sort %s | dmenu -l %d | cut -d ' ' -f2 > %s", filepath1, nclients, filepath2);
+  snprintf(filepath2, sizeof(filepath2), "%s/%s-dwm-showapps-select.txt", tmpdir, user);
+  snprintf(cmd, sizeof(cmd), "sort %s | dmenu -l %d | cut -d ' ' -f2 > %s", filepath1, nclients, filepath2);
+
   if (system(cmd) && (file = fopen(filepath2, "r"))) {
-    if (fgets(line, sizeof line - 1, file)) {
+    if (fgets(line, sizeof(line), file)) {
       /* remove '\n' from fgets */
       line[strcspn(line, "\n")] = '\0';
       a.v = line;
@@ -1431,15 +1560,19 @@ void showapps(const Arg *arg)
 /* focus the urgent window */
 void showurgent(const Arg *arg)
 {
+  Arg a;
   Monitor *m;
   Client *c;
-  Arg a;
+
+  if (!selmon) {
+    return;
+  }
 
   for (m = mons; m; m = m->next) {
     for (c = m->clients; c; c = c->next) {
       if (c->isurgent) {
         if (m != selmon) {
-          unfocus(selmon->sel, True);
+          unfocus(selmon->sel, 1);
           selmon = c->mon;
           focus(NULL);
         }
@@ -1459,6 +1592,10 @@ void spawnsh(const char *cmd)
   const char *shcmd[] = { "/bin/sh", "-c", cmd, NULL };
   Arg a = {.v = shcmd };
 
+  if (!cmd) {
+    return;
+  }
+
   spawn(&a);
 }
 
@@ -1466,7 +1603,7 @@ void spawnsh(const char *cmd)
 void stackdown(const Arg *arg) {
   Client *c;
 
-  if (!selmon->sel || selmon->sel->isfloating || ismaster(selmon->sel)) {
+  if (!selmon || !selmon->sel || selmon->sel->isfloating || ismaster(selmon->sel)) {
     return;
   }
 
@@ -1484,7 +1621,7 @@ void stackdown(const Arg *arg) {
 void stackup(const Arg *arg) {
   Client *c, *p;
 
-  if (!selmon->sel || selmon->sel->isfloating || ismaster(selmon->sel)) {
+  if (!selmon || !selmon->sel || selmon->sel->isfloating || ismaster(selmon->sel)) {
     return;
   }
 
@@ -1512,6 +1649,10 @@ void tileright(Monitor *m)
   unsigned int i, n, h, mw, my, ty;
   Client *c;
 
+  if (!m) {
+    return;
+  }
+
   for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
     ;
   }
@@ -1528,13 +1669,13 @@ void tileright(Monitor *m)
   for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
     if (i < m->nmaster) {
       h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), 0);
       if (my + HEIGHT(c) < m->wh) {
         my += HEIGHT(c);
       }
-   } else {
+		} else {
       h = (m->wh - ty) / (n - i);
-      resize(c, m->wx, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+      resize(c, m->wx, m->wy + ty, m->ww - mw - (2 * c->bw), h - (2 * c->bw), 0);
       if (ty + HEIGHT(c) < m->wh) {
         ty += HEIGHT(c);
       }
@@ -1545,7 +1686,7 @@ void tileright(Monitor *m)
 /* toggle the window border */
 void toggleborder(const Arg *arg)
 {
-  if (!selmon->sel) {
+  if (!selmon || !selmon->sel) {
     return;
   }
   if (selmon->sel->bw) {
@@ -1560,32 +1701,36 @@ void toggleborder(const Arg *arg)
 /* toggle to fullscreen */
 void togglefullscr(const Arg *arg)
 {
-  if (selmon->sel) {
-    setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
+  if (!selmon || !selmon->sel) {
+    return;
   }
+
+  setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
 }
 
 /* toggle the mouse cursor */
 void togglemousecursor(const Arg *arg)
 {
   Window w_ret;
-  int root_x, root_y;
-  int win_x, win_y;
+  int root_x, root_y, win_x, win_y;
   unsigned int mask_ret;
   /* pointer position to "hide" */
-  int pointer_x = selmon->mx + 5;
-  int pointer_y = 0;
+  int pointer_x;
+  int pointer_y;
   /* position */
   static int root_x_pos = 0;
   static int root_y_pos = 0;
 
   /* only if bar is on */
-  if (!selmon->showbar) {
+  if (!selmon || !selmon->showbar) {
     return;
   }
 
+  pointer_x = selmon->mx + 5;
+  pointer_y = 0;
+
   /* get current x, y mouse pointer */
-  if (!XQueryPointer (dpy, root, &w_ret, &w_ret, &root_x, &root_y, &win_x, &win_y, &mask_ret)) {
+  if (!XQueryPointer(dpy, root, &w_ret, &w_ret, &root_x, &root_y, &win_x, &win_y, &mask_ret)) {
     return;
   }
 
@@ -1602,24 +1747,30 @@ void togglemousecursor(const Arg *arg)
 /* toggle bar position between top and bottom */
 void togglebarpos(const Arg *arg)
 {
-  if (selmon->showbar) {
-    selmon->topbar = !selmon->topbar;
-    updatebarpos(selmon);
-    XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
-    arrange(selmon);
+  if (!selmon || !selmon->showbar) {
+    return;
   }
+
+  selmon->topbar = !selmon->topbar;
+  updatebarpos(selmon);
+  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
+  arrange(selmon);
 }
 
 /* write the current bar */
 void writecurbar(void)
 {
-  FILE *file;
   Monitor *m;
+  FILE *file;
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curbar.txt", tmpdir, user);
+  if (!user || !tmpdir) {
+    return;
+  }
+
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-curbar.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1634,13 +1785,17 @@ void writecurbar(void)
 /* write the current layout */
 void writecurlayout(void)
 {
-  FILE *file;
   Monitor *m;
+  FILE *file;
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curlayout.txt", tmpdir, user);
+  if (!user || !tmpdir) {
+    return;
+  }
+
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-curlayout.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1655,18 +1810,18 @@ void writecurlayout(void)
 /* write the current master window */
 void writecurmaster(void)
 {
-  FILE *file;
   Monitor *m;
   Client *c;
+  FILE *file;
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
-  if (!selmon->sel || selmon->sel->isfloating) {
+  if (!user || !tmpdir || !selmon || !selmon->sel || selmon->sel->isfloating) {
     return;
   }
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmaster.txt", tmpdir, user);
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-curmaster.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1690,11 +1845,11 @@ void writecurmon(void)
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
-  if (!selmon) {
+  if (!user || !tmpdir || !selmon) {
     return;
   }
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmon.txt", tmpdir, user);
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-curmon.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1706,13 +1861,17 @@ void writecurmon(void)
 /* write the current tag */
 void writecurtag(void)
 {
-  FILE *file;
   Monitor *m;
+  FILE *file;
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curtag.txt", tmpdir, user);
+  if (!user || !tmpdir) {
+    return;
+  }
+
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-curtag.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1732,11 +1891,11 @@ void writecurwin(void)
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
 
-  if (!selmon->sel) {
+  if (!user || !tmpdir || !selmon || !selmon->sel) {
     return;
   }
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curwin.txt", tmpdir, user);
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-curwin.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1748,13 +1907,17 @@ void writecurwin(void)
 /* write the current mfact */
 void writecurmfact(void)
 {
+  Monitor *m;
   FILE *file;
   char filepath[FILE_SIZE];
   char *user = getenv("USER");
   char *tmpdir = gettmpdir();
-  Monitor *m;
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-curmfact.txt", tmpdir, user);
+  if (!user || !tmpdir) {
+    return;
+  }
+
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-curmfact.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1776,11 +1939,11 @@ void writeclassname(Client *c)
   char *name;
   char *cls;
 
-  if (!c) {
+  if (!user || !tmpdir || !c) {
     return;
   }
 
-  snprintf(filepath, sizeof filepath, "%s/%s-dwm-classname.txt", tmpdir, user);
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-classname.txt", tmpdir, user);
   if (!(file = fopen(filepath, "w+"))) {
     debug("can't create file %s", filepath);
     return;
@@ -1799,7 +1962,7 @@ void zoomfirst(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating) {
+  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating) {
     return;
   }
 
@@ -1816,6 +1979,10 @@ void zoomfirst(const Arg *arg)
 /* zoom first wrapper */
 void zoomfirstwrp(const Arg *arg)
 {
+  if (!selmon) {
+    return;
+  }
+
   if (istileright()) {
     zoomlast(arg);
   } else {
@@ -1826,10 +1993,9 @@ void zoomfirstwrp(const Arg *arg)
 /* zoom the last window */
 void zoomlast(const Arg *arg)
 {
-  Client *c;
-  Client *cl;
+  Client *c, *cl;
 
-  if (!selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating) {
+  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating) {
     return;
   }
 
@@ -1847,6 +2013,10 @@ void zoomlast(const Arg *arg)
 /* zoom last wrapper */
 void zoomlastwrp(const Arg *arg)
 {
+	if (!selmon) {
+		return;
+	}
+
   if (istileright()) {
     zoomfirst(arg);
   } else {
@@ -1857,9 +2027,7 @@ void zoomlastwrp(const Arg *arg)
 /* zoom/cycles the monitors */
 void zoommon(const Arg *arg)
 {
-  Monitor *m;
-  Monitor *m1 = NULL;
-  Monitor *m2 = NULL;
+  Monitor *m, *m1 = NULL, *m2 = NULL;
   Client *c;
   int ac[256] = {0};
   int i = 0;
@@ -1868,7 +2036,7 @@ void zoommon(const Arg *arg)
   unsigned int m2_tagset;
 
   /* no next monitor */
-  if (!mons->next) {
+  if (!mons || !mons->next) {
     return;
   }
 
@@ -1923,10 +2091,14 @@ void zoommon(const Arg *arg)
 
 /* deck layout */
 void deck(Monitor *m) {
-  unsigned int i, n, h, mw, my;
   Client *c;
+  unsigned int i, n, h, mw, my;
 
-  for(n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+	if (!m) {
+		return;
+	}
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
     ;
   }
   if (n == 0) {
@@ -1935,7 +2107,7 @@ void deck(Monitor *m) {
 
   if (n > m->nmaster) {
     mw = m->nmaster ? m->ww * m->mfact : 0;
-    snprintf(m->ltsymbol, sizeof m->ltsymbol, "D[%d]=", n - m->nmaster);
+    snprintf(m->ltsymbol, sizeof(m->ltsymbol), "D[%d]=", n - m->nmaster);
   } else {
     mw = m->ww;
   }
@@ -1953,10 +2125,14 @@ void deck(Monitor *m) {
 
 /* deck layout (master right) */
 void deckright(Monitor *m) {
-  unsigned int i, n, h, mw, my;
-  Client *c;
+	Client *c;
+	unsigned int i, n, h, mw, my;
 
-  for(n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+	if (!m) {
+		return;
+	}
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
     ;
   }
   if (n == 0) {
@@ -1965,7 +2141,7 @@ void deckright(Monitor *m) {
 
   if (n > m->nmaster) {
     mw = m->nmaster ? m->ww * m->mfact : 0;
-    snprintf(m->ltsymbol, sizeof m->ltsymbol, "=[%d]D", n - m->nmaster);
+    snprintf(m->ltsymbol, sizeof(m->ltsymbol), "=[%d]D", n - m->nmaster);
   } else {
     mw = m->ww;
   }

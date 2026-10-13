@@ -39,9 +39,9 @@ void focusclient(const Arg *arg);
 void focuslast(const Arg *arg);
 void focusmaster(const Arg *arg);
 void focusmonmaster(const Arg *arg);
-void focusnum(const Arg *arg);
 void focusstackfull(const Arg *arg);
-void focusvisible(const Arg *arg);
+void focusstackmon(const Arg *arg);
+void focusstacknum(const Arg *arg);
 char *gettmpdir(void);
 char *getwindow(Window w, const char *type);
 int getidfromclass(const Arg *arg);
@@ -289,33 +289,6 @@ void focusmonmaster(const Arg *arg)
   focusmaster(arg);
 }
 
-/* focus the tiled client by its index number */
-void focusnum(const Arg *arg)
-{
-  Client *c;
-  Client *next;
-  int i;
-
-  if (!selmon || !selmon->clients) {
-    return;
-  }
-
-  c = nexttiled(selmon->clients);
-  if (!c) {
-    return;
-  }
-
-  for (i = 0; i < arg->i; i++) {
-    next = nexttiled(c->next);
-    if (!next) {
-      break;
-    }
-    c = next;
-  }
-
-  focus(c);
-}
-
 /* focus stack on the fullcreen window */
 void focusstackfull(const Arg *arg)
 {
@@ -325,8 +298,8 @@ void focusstackfull(const Arg *arg)
   focusstack(arg);
 }
 
-/* focus through all the visible clients (multi monitor) */
-void focusvisible(const Arg *arg)
+/* focus stack (multi monitor) */
+void focusstackmon(const Arg *arg)
 {
   Monitor *m;
   Client *c = NULL;
@@ -373,6 +346,33 @@ void focusvisible(const Arg *arg)
 	}
 	focus(c);
   }
+}
+
+/* focus stack by its index number */
+void focusstacknum(const Arg *arg)
+{
+  Client *c;
+  Client *next;
+  int i;
+
+  if (!selmon || !selmon->clients) {
+    return;
+  }
+
+  c = nexttiled(selmon->clients);
+  if (!c) {
+    return;
+  }
+
+  for (i = 0; i < arg->i; i++) {
+    next = nexttiled(c->next);
+    if (!next) {
+      break;
+    }
+    c = next;
+  }
+
+  focus(c);
 }
 
 /* get the tmpdir */

@@ -152,9 +152,9 @@ static Key keys[] = {
   { MODKEY,                         XK_bracketright, zoomlastwrp,        {0} },
   { MODKEY|ShiftMask,               XK_bracketright, stackdown,          {0} },
   { MODKEY|ShiftMask,               XK_j,            focusstackfull,     {.i = +1 } },
-  { MODKEY|ControlMask,             XK_j,            focusvisible,       {.i = +1 } },
+  { MODKEY|ControlMask,             XK_j,            focusstackmon,      {.i = +1 } },
   { MODKEY|ShiftMask,               XK_k,            focusstackfull,     {.i = -1 } },
-  { MODKEY|ControlMask,             XK_k,            focusvisible,       {.i = -1 } },
+  { MODKEY|ControlMask,             XK_k,            focusstackmon,      {.i = -1 } },
   { MODKEY|ControlMask,             XK_Tab,          focusclass,         {.i = +1 } },
   { MODKEY|ControlMask|ShiftMask,   XK_Tab,          focusclass,         {.i = -1 } },
   { MODKEY|ControlMask|ShiftMask,   XK_c,            killunsel,          {0} },
@@ -221,17 +221,17 @@ static Key keys[] = {
   #endif
   */
 
-  /* example of focusnum */
+  /* example of focusstacknum */
   /*
-  { MODKEY|ALTKEY,                  XK_1,            focusnum,           {.i = 0} },
-  { MODKEY|ALTKEY,                  XK_2,            focusnum,           {.i = 1} },
-  { MODKEY|ALTKEY,                  XK_3,            focusnum,           {.i = 2} },
-  { MODKEY|ALTKEY,                  XK_4,            focusnum,           {.i = 3} },
-  { MODKEY|ALTKEY,                  XK_5,            focusnum,           {.i = 4} },
-  { MODKEY|ALTKEY,                  XK_6,            focusnum,           {.i = 5} },
-  { MODKEY|ALTKEY,                  XK_7,            focusnum,           {.i = 6} },
-  { MODKEY|ALTKEY,                  XK_8,            focusnum,           {.i = 7} },
-  { MODKEY|ALTKEY,                  XK_9,            focusnum,           {.i = 8} },
+  { MODKEY|ALTKEY,                  XK_1,            focusstacknum,      {.i = 0} },
+  { MODKEY|ALTKEY,                  XK_2,            focusstacknum,      {.i = 1} },
+  { MODKEY|ALTKEY,                  XK_3,            focusstacknum,      {.i = 2} },
+  { MODKEY|ALTKEY,                  XK_4,            focusstacknum,      {.i = 3} },
+  { MODKEY|ALTKEY,                  XK_5,            focusstacknum,      {.i = 4} },
+  { MODKEY|ALTKEY,                  XK_6,            focusstacknum,      {.i = 5} },
+  { MODKEY|ALTKEY,                  XK_7,            focusstacknum,      {.i = 6} },
+  { MODKEY|ALTKEY,                  XK_8,            focusstacknum,      {.i = 7} },
+  { MODKEY|ALTKEY,                  XK_9,            focusstacknum,      {.i = 8} },
   */
 
 };

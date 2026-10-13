@@ -31,11 +31,14 @@ static const char *colors[][3] = {
 };
 
 /* browser for maps like focus/reload */
-static const char defbrowser[] = "Chromium-browser";
+static const char defbrowser[] = "firefox";
 
 /* default scratch applications */
+static const char *defscratchappbrowser[] = { "firefox", "firefox", NULL };
 static const char *defscratchappdyn[] = { NULL, "Scratchpaddyn", NULL };
 static const char *defscratchapp1[] = { "xterm -u8 -class 'Scratchpad1'", "Scratchpad1", NULL };
+static const char *defscratchapp2[] = { "emacs", "Emacs", NULL };
+static const char *defscratchapp3[] = { "gvim", "Gvim", NULL };
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
@@ -84,6 +87,7 @@ static const Layout layouts[] = {
 
 /* key definitions */
 #define MODKEY Mod4Mask
+#define ALTKEY Mod1Mask
 #define TAGKEYS(KEY,TAG) \
 { MODKEY,                       KEY,      view,             {.ui = 1 << TAG} }, \
 { MODKEY|ControlMask,           KEY,      toggleview,       {.ui = 1 << TAG} }, \
@@ -106,16 +110,13 @@ static Key keys[] = {
   { MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
   { MODKEY,                       XK_b,      togglebar,      {0} },
   { MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
-  { MODKEY|ControlMask,           XK_j,      focusvisible,   {.i = +1 } },
   { MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
-  { MODKEY|ControlMask,           XK_k,      focusvisible,   {.i = -1 } },
   { MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
   { MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
   /*
   { MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
   { MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
   */
-   /* layout tileright */
   { MODKEY,                       XK_h,      setmfactwrp,    {.f = -0.05} },
   { MODKEY,                       XK_l,      setmfactwrp,    {.f = +0.05} },
   { MODKEY,                       XK_Return, zoom,           {0} },
@@ -145,27 +146,34 @@ static Key keys[] = {
   /* END DEFAULTS */
 
   /* MY MODKEYS */
+  { MODKEY|ShiftMask,               XK_t,            setlayout,          {.v = &layouts[3]} }, /* tile layout (master right) */
   { MODKEY,                         XK_bracketleft,  zoomfirstwrp,       {0} },
+  { MODKEY|ShiftMask,               XK_bracketleft,  stackup,            {0} },
   { MODKEY,                         XK_bracketright, zoomlastwrp,        {0} },
-  { MODKEY|ShiftMask,               XK_j,            stackdown,          {0} },
-  { MODKEY|ShiftMask,               XK_k,            stackup,            {0} },
-  { MODKEY|ControlMask,             XK_j,            focusstackfull,     {.i = +1 } },
-  { MODKEY|ControlMask,             XK_k,            focusstackfull,     {.i = -1 } },
+  { MODKEY|ShiftMask,               XK_bracketright, stackdown,          {0} },
+  { MODKEY|ShiftMask,               XK_j,            focusstackfull,     {.i = +1 } },
+  { MODKEY|ControlMask,             XK_j,            focusvisible,       {.i = +1 } },
+  { MODKEY|ShiftMask,               XK_k,            focusstackfull,     {.i = -1 } },
+  { MODKEY|ControlMask,             XK_k,            focusvisible,       {.i = -1 } },
   { MODKEY|ControlMask,             XK_Tab,          focusclass,         {.i = +1 } },
   { MODKEY|ControlMask|ShiftMask,   XK_Tab,          focusclass,         {.i = -1 } },
-  { MODKEY|ShiftMask,               XK_Escape,       spawn,              SHCMD("xkill") },
-  { MODKEY|ShiftMask|ControlMask,   XK_Escape,       spawn,              SHCMD("wmkill") },
+  { MODKEY|ControlMask|ShiftMask,   XK_c,            killunsel,          {0} },
+  { MODKEY|ControlMask,             XK_Escape,       spawn,              SHCMD("xkill") },
+  { MODKEY|ControlMask|ShiftMask,   XK_Escape,       spawn,              SHCMD("wmkill") },
   { MODKEY|ShiftMask,               XK_p,            spawn,              SHCMD("gmrun") },
-  { MODKEY|ShiftMask|ControlMask,   XK_p,            spawn,              SHCMD("wmmenu") },
+  { MODKEY|ControlMask|ShiftMask,   XK_p,            spawn,              SHCMD("wmmenu") },
+  { MODKEY,                         XK_w,            scratchpadmon,      {.v = defscratchappbrowser} },
   { MODKEY|ControlMask,             XK_Return,       scratchpadmon,      {.v = defscratchapp1} },
+  { MODKEY,                         XK_e,            scratchpadmon,      {.v = defscratchapp2} },
+  { MODKEY|ShiftMask,               XK_e,            scratchpadmon,      {.v = defscratchapp3} },
   { MODKEY|ControlMask,             XK_i,            setscratchpad,      {.v = defscratchappdyn} },
-  { MODKEY|ShiftMask|ControlMask,   XK_i,            unsetscratchpad,    {.v = defscratchappdyn} },
+  { MODKEY|ControlMask|ShiftMask,   XK_i,            unsetscratchpad,    {.v = defscratchappdyn} },
   { MODKEY|ControlMask,             XK_o,            scratchpadmon,      {.v = defscratchappdyn} },
-  { MODKEY|ShiftMask|ControlMask,   XK_Return,       zoommon,            {0} },
-  { MODKEY|ControlMask,             XK_bracketleft,  spawn,              SHCMD("primary2clipboard") },
-  { MODKEY|ControlMask,             XK_bracketright, spawn,              SHCMD("clipboard2primary") },
-  { MODKEY|ShiftMask|ControlMask,   XK_bracketleft,  spawn,              SHCMD("xclip -o | dmenu -l 25") },
-  { MODKEY|ShiftMask|ControlMask,   XK_bracketright, spawn,              SHCMD("xclip -o -selection clipboard | dmenu -l 25") },
+  { MODKEY|ControlMask|ShiftMask,   XK_Return,       zoommon,            {0} },
+  { MODKEY,                         XK_a,            spawn,              SHCMD("primary2clipboard") },
+  { MODKEY|ShiftMask,               XK_a,            spawn,              SHCMD("clipboard2primary") },
+  { MODKEY|ControlMask,             XK_a,            spawn,              SHCMD("xclip -o | dmenu -l 25") },
+  { MODKEY|ControlMask|ShiftMask,   XK_a,            spawn,              SHCMD("xclip -o -selection clipboard | dmenu -l 25") },
   { MODKEY,                         XK_F10,          spawn,              SHCMD("volume toggle && wmbarupdate") },
   { MODKEY|ShiftMask,               XK_F10,          spawn,              SHCMD("volume toggleapp && wmbarupdate") },
   { MODKEY,                         XK_F11,          spawn,              SHCMD("volume down && wmbarupdate") },
@@ -174,16 +182,17 @@ static Key keys[] = {
   { MODKEY|ShiftMask,               XK_F12,          spawn,              SHCMD("volume upapp && wmbarupdate") },
   { MODKEY,                         XK_s,            spawn,              SHCMD("sleep 0.2 && slock") },
   { MODKEY|ShiftMask,               XK_s,            savesession,        {0} },
-  { MODKEY|ShiftMask|ControlMask,   XK_s,            restoresession,     {0} },
+  { MODKEY|ControlMask,             XK_s,            restoresession,     {0} },
   { MODKEY|ShiftMask,               XK_b,            togglebarpos,       {0} },
   { MODKEY|ControlMask,             XK_b,            spawn,              SHCMD("wmbarupdate") },
   { MODKEY,                         XK_Print,        spawn,              SHCMD("sleep 0.2 && wmscreenshot full") },
   { MODKEY|ShiftMask,               XK_Print,        spawn,              SHCMD("sleep 0.2 && wmscreenshot select") },
   { MODKEY,                         XK_Home,         focusclient,        {.v = defbrowser} },
   { MODKEY,                         XK_End,          reloadbrowser,      {.v = defbrowser} },
-  { MODKEY,                         XK_y,            showurgent,         {0} },
-  { MODKEY,                         XK_u,            showapps,           {.v = "focus"} },
-  { MODKEY|ShiftMask|ControlMask,   XK_u,            showapps,           {.v = "kill"} },
+  { MODKEY,                         XK_u,            showurgent,         {0} },
+  { MODKEY|ShiftMask,               XK_u,            showapps,           {.v = "focus"} },
+  { MODKEY|ControlMask,             XK_u,            showapps,           {.v = "master"} },
+  { MODKEY|ControlMask|ShiftMask,   XK_u,            showapps,           {.v = "kill"} },
   { MODKEY,                         XK_g,            toggleborder,       {0}},
   { MODKEY|ShiftMask,               XK_m,            togglefullscr,      {0} },
   { MODKEY,                         XK_r,            togglemousecursor,  {0} },
@@ -195,10 +204,36 @@ static Key keys[] = {
   { MODKEY,                         XK_Next,         focusmonmaster,     {.i = +1} },
   { MODKEY|ShiftMask,               XK_Prior,        tagmon,             {.i = -1} },
   { MODKEY|ShiftMask,               XK_Next,         tagmon,             {.i = +1} },
-  { MODKEY,                         XK_q,            reloaddwm,          {0} },
   { MODKEY,                         XK_F4,           spawn,              SHCMD("setxkbsw -n && wmbarupdate") },
-  { MODKEY|ShiftMask|ControlMask,   XK_space,        nextlayout,         {0} },
-  { MODKEY|ShiftMask|ControlMask,   XK_BackSpace,    prevlayout,         {0} },
+  { MODKEY,                         XK_z,            nextlayout,         {0} },
+  { MODKEY|ShiftMask,               XK_z,            prevlayout,         {0} },
+  { MODKEY,                         XK_q,            reloaddwm,          {0} },
+  { MODKEY,                         XK_equal,        setdefmfact,        {.f = defmfact} },
+  { MODKEY|ShiftMask,               XK_equal,        setdefnmaster,      {0} },
+
+  /* example of sendkey for h,j,k,l style */
+  /*
+  #if WITH_XTEST
+  { MODKEY|ALTKEY,                  XK_h,            sendkey,            {.ui = XK_Left} },
+  { MODKEY|ALTKEY,                  XK_j,            sendkey,            {.ui = XK_Down} },
+  { MODKEY|ALTKEY,                  XK_k,            sendkey,            {.ui = XK_Up} },
+  { MODKEY|ALTKEY,                  XK_l,            sendkey,            {.ui = XK_Right} },
+  #endif
+  */
+
+  /* example of focusnum */
+  /*
+  { MODKEY|ALTKEY,                  XK_1,            focusnum,           {.i = 0} },
+  { MODKEY|ALTKEY,                  XK_2,            focusnum,           {.i = 1} },
+  { MODKEY|ALTKEY,                  XK_3,            focusnum,           {.i = 2} },
+  { MODKEY|ALTKEY,                  XK_4,            focusnum,           {.i = 3} },
+  { MODKEY|ALTKEY,                  XK_5,            focusnum,           {.i = 4} },
+  { MODKEY|ALTKEY,                  XK_6,            focusnum,           {.i = 5} },
+  { MODKEY|ALTKEY,                  XK_7,            focusnum,           {.i = 6} },
+  { MODKEY|ALTKEY,                  XK_8,            focusnum,           {.i = 7} },
+  { MODKEY|ALTKEY,                  XK_9,            focusnum,           {.i = 8} },
+  */
+
 };
 
 /* button definitions */

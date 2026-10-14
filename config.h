@@ -68,9 +68,9 @@ static const int refreshrate = 120;     /* refresh rate (per second) for client 
 static const int modkeycode = 0;        /* 0 means dynamically guess Super_L, else use exact keycode (e.g. 133) */
 #endif
 
-void tileright(Monitor *m); /* master on right */
-void deck(Monitor *m);
-void deckright(Monitor *m); /* master on right */
+static void tileright(Monitor *m); /* master on right */
+static void deck(Monitor *m);
+static void deckright(Monitor *m); /* master on right */
 static const Layout layouts[] = {
   /* symbol     arrange function */
   { "[]=",      tile },      /* first entry is default */

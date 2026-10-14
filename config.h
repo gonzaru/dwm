@@ -70,6 +70,8 @@ static const int modkeycode = 0;        /* 0 means dynamically guess Super_L, el
 
 static void deck(Monitor *m);
 static void deckright(Monitor *m);    /* master on right */
+static void horiz(Monitor *m);
+static void horizright(Monitor *m);   /* master on right */
 static void tileright(Monitor *m);    /* master on right */
 static void tilecol(Monitor *m);
 static void tilecolright(Monitor *m); /* master on right */
@@ -79,10 +81,12 @@ static const Layout layouts[] = {
   { "><>",      NULL },         /* no layout function means floating behavior */
   { "[M]",      monocle },
   { "=[]",      tileright },    /* master on right */
-  { "[]|",      tilecol },
-  { "|[]",      tilecolright }, /* master on right */
-  { "[]:",      deck },
-  { ":[]",      deckright },    /* master on right */
+  { "[|]=",     tilecol },
+  { "=[|]",     tilecolright }, /* master on right */
+  { "|||:",     horiz },
+  { ":|||",     horizright },   /* master right */
+  { "[D]:",     deck },
+  { ":[D]",     deckright },    /* master right */
   { NULL,       NULL },
 };
 
@@ -185,8 +189,9 @@ static Key keys[] = {
   { MODKEY,                         XK_F12,          spawn,              SHCMD("volume up && wmbarupdate") },
   { MODKEY|ShiftMask,               XK_F12,          spawn,              SHCMD("volume upapp && wmbarupdate") },
   { MODKEY,                         XK_s,            spawn,              SHCMD("sleep 0.2 && slock") },
-  { MODKEY|ShiftMask,               XK_s,            savesession,        {0} },
-  { MODKEY|ControlMask,             XK_s,            restoresession,     {0} },
+  { MODKEY|ShiftMask,               XK_s,            NULL,               {0} },
+  { MODKEY|ControlMask,             XK_s,            savesession,        {0} },
+  { MODKEY|ControlMask|ShiftMask,   XK_s,            restoresession,     {0} },
   { MODKEY|ShiftMask,               XK_b,            togglebarpos,       {0} },
   { MODKEY|ControlMask,             XK_b,            spawn,              SHCMD("wmbarupdate") },
   { MODKEY,                         XK_Print,        spawn,              SHCMD("sleep 0.2 && wmscreenshot full") },

@@ -485,6 +485,7 @@ int islayoutright(void)
 
   /* return strcmp(selmon->ltsymbol, "=[]") == 0; */
   return selmon->lt[selmon->sellt]->arrange == deckright
+    || selmon->lt[selmon->sellt]->arrange == horizright
     || selmon->lt[selmon->sellt]->arrange == tileright
     || selmon->lt[selmon->sellt]->arrange == tilecolright;
 }
@@ -2088,6 +2089,7 @@ static void deck(Monitor *m) {
     ;
   }
   if (n == 0) {
+    snprintf(m->ltsymbol, sizeof(m->ltsymbol), "[D]:");
     return;
   }
 
@@ -2096,6 +2098,7 @@ static void deck(Monitor *m) {
     snprintf(m->ltsymbol, sizeof(m->ltsymbol), "[%d]:", n - m->nmaster);
   } else {
     mw = m->ww;
+    snprintf(m->ltsymbol, sizeof(m->ltsymbol), "[D]:");
   }
 
   for (i = my = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
@@ -2124,6 +2127,7 @@ static void deckright(Monitor *m) {
     ;
   }
   if (n == 0) {
+    snprintf(m->ltsymbol, sizeof(m->ltsymbol), ":[D]");
     return;
   }
 
@@ -2132,6 +2136,7 @@ static void deckright(Monitor *m) {
     snprintf(m->ltsymbol, sizeof(m->ltsymbol), ":[%d]", n - m->nmaster);
   } else {
     mw = m->ww;
+    snprintf(m->ltsymbol, sizeof(m->ltsymbol), ":[D]");
   }
 
   for (i = my = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
@@ -2144,6 +2149,52 @@ static void deckright(Monitor *m) {
     } else {
       resize(c, m->wx, m->wy, m->ww - mw - (2 * c->bw), m->wh - (2 * c->bw), 0);
     }
+  }
+}
+
+/* horizontal layout */
+static void horiz(Monitor *m)
+{
+  unsigned int i, n, w;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  w = m->ww / n;
+  for (i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    resize(c, m->wx + (i * w), m->wy, w - (2 * c->bw), m->wh - (2 * c->bw), 0);
+  }
+}
+
+/* horizontal layout (master right) */
+static void horizright(Monitor *m)
+{
+  unsigned int i, n, w;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  w = m->ww / n;
+  for (i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    resize(c, m->wx + ((n - 1 - i) * w), m->wy, w - (2 * c->bw), m->wh - (2 * c->bw), 0);
   }
 }
 

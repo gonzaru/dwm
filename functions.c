@@ -1502,10 +1502,9 @@ void showapps(const Arg *arg)
   FILE *file = NULL;
   char *tmpdir = gettmpdir();
   char *user = getenv("USER");
-  char filepath1[FILE_SIZE];
-  char filepath2[FILE_SIZE];
+  char filepath[FILE_SIZE];
   char line[LINE_SIZE];
-  char cmd[sizeof(filepath1) + sizeof(filepath2) + 37]; /* 37 dmenu|sort|cut */
+  char cmd[sizeof(filepath) + 64]; /* 64 dmenu|sort|cut */
   int nclients = 0, winid = 0;
   char *cls;
 
@@ -1513,9 +1512,9 @@ void showapps(const Arg *arg)
     return;
   }
 
-  snprintf(filepath1, sizeof(filepath1), "%s/%s-dwm-showapps-list.txt", tmpdir, user);
-  if (!(file = fopen(filepath1, "w+"))) {
-    debug("can't create file %s", filepath1);
+  snprintf(filepath, sizeof(filepath), "%s/%s-dwm-showapps-list.txt", tmpdir, user);
+  if (!(file = fopen(filepath, "w+"))) {
+    debug("can't create file %s", filepath);
     return;
   }
 
@@ -1534,10 +1533,8 @@ void showapps(const Arg *arg)
     return;
   }
 
-  snprintf(filepath2, sizeof(filepath2), "%s/%s-dwm-showapps-select.txt", tmpdir, user);
-  snprintf(cmd, sizeof(cmd), "sort %s | dmenu -l %d | cut -d ' ' -f2 > %s", filepath1, nclients, filepath2);
-
-  if (system(cmd) && (file = fopen(filepath2, "r"))) {
+  snprintf(cmd, sizeof(cmd), "sort %s | dmenu -l %d | cut -d ' ' -f2", filepath, nclients);
+  if ((file = popen(cmd, "r"))) {
     if (fgets(line, sizeof(line), file)) {
       /* remove '\n' from fgets */
       line[strcspn(line, "\n")] = '\0';
@@ -1553,7 +1550,7 @@ void showapps(const Arg *arg)
         setasmastermon(getclientfromid(atoi(a.v)));
       }
     }
-    fclose(file);
+    pclose(file);
   }
 }
 
@@ -2107,7 +2104,7 @@ void deck(Monitor *m) {
 
   if (n > m->nmaster) {
     mw = m->nmaster ? m->ww * m->mfact : 0;
-    snprintf(m->ltsymbol, sizeof(m->ltsymbol), "D[%d]=", n - m->nmaster);
+    snprintf(m->ltsymbol, sizeof(m->ltsymbol), "[%d]:", n - m->nmaster);
   } else {
     mw = m->ww;
   }
@@ -2115,10 +2112,10 @@ void deck(Monitor *m) {
   for (i = my = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
     if (i < m->nmaster) {
       h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-      resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), False);
+      resize(c, m->wx, m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), False);
       my += HEIGHT(c);
     } else {
-      resize(c, m->wx + mw, m->wy, m->ww - mw - (2*c->bw), m->wh - (2*c->bw), False);
+      resize(c, m->wx + mw, m->wy, m->ww - mw - (2 * c->bw), m->wh - (2 * c->bw), False);
     }
   }
 }
@@ -2141,7 +2138,7 @@ void deckright(Monitor *m) {
 
   if (n > m->nmaster) {
     mw = m->nmaster ? m->ww * m->mfact : 0;
-    snprintf(m->ltsymbol, sizeof(m->ltsymbol), "=[%d]D", n - m->nmaster);
+    snprintf(m->ltsymbol, sizeof(m->ltsymbol), ":[%d]", n - m->nmaster);
   } else {
     mw = m->ww;
   }
@@ -2149,10 +2146,10 @@ void deckright(Monitor *m) {
   for (i = my = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
     if (i < m->nmaster) {
       h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2*c->bw), h - (2*c->bw), False);
+      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), False);
       my += HEIGHT(c);
     } else {
-      resize(c, m->wx, m->wy, m->ww - mw - (2*c->bw), m->wh - (2*c->bw), False);
+      resize(c, m->wx, m->wy, m->ww - mw - (2 * c->bw), m->wh - (2 * c->bw), False);
     }
   }
 }

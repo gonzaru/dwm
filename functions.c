@@ -46,8 +46,8 @@ char *gettmpdir(void);
 char *getwindow(Window w, const char *type);
 Window getidfromclass(const Arg *arg);
 Client *getclientfromid(Window winid);
+int islayoutright(void);
 int ismaster(Client *c);
-int istileright(void);
 void killunsel(const Arg *arg);
 int layoutidx(const char *sym);
 void nexttag(const Arg *arg);
@@ -476,6 +476,20 @@ Client *getclientfromid(Window winid)
   return NULL;
 }
 
+/* check if the layout is on the right position (default left) */
+int islayoutright(void)
+{
+  if (!selmon || !selmon->lt[selmon->sellt]) {
+    return 0;
+  }
+
+  /* return strcmp(selmon->ltsymbol, "=[]") == 0; */
+  return selmon->lt[selmon->sellt]->arrange == deckright
+    || selmon->lt[selmon->sellt]->arrange == tileright
+    || selmon->lt[selmon->sellt]->arrange == tilecolright;
+}
+
+
 /* check if the client is the master */
 int ismaster(Client *cm)
 {
@@ -487,17 +501,6 @@ int ismaster(Client *cm)
 
   c = nexttiled(cm->mon->clients);
   return (c == cm) ? 1 : 0;
-}
-
-/* check if the tile is on the right position (default left) */
-int istileright(void)
-{
-  if (!selmon || !selmon->lt[selmon->sellt]) {
-    return 0;
-  }
-
-  /* return strcmp(selmon->ltsymbol, "=[]") == 0; */
-  return selmon->lt[selmon->sellt]->arrange == tileright;
 }
 
 /* kill all clients except the selected one (current tag) */
@@ -1494,7 +1497,7 @@ void setmfactwrp(const Arg *arg)
 
   a = *arg;
 
-  if (istileright()) {
+  if (islayoutright()) {
     a.f = -a.f;
   }
   setmfact(&a);
@@ -1663,46 +1666,6 @@ void stackup(const Arg *arg) {
     c->next = selmon->sel;
     focus(selmon->sel);
     arrange(selmon);
-  }
-}
-
-/* tile right (layout) */
-static void tileright(Monitor *m)
-{
-  unsigned int i, n, h, mw, my, ty;
-  Client *c;
-
-  if (!m) {
-    return;
-  }
-
-  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
-    ;
-  }
-  if (n == 0) {
-    return;
-  }
-
-  if (n > m->nmaster) {
-    mw = m->nmaster ? m->ww * m->mfact : 0;
-  } else {
-    mw = m->ww;
-  }
-
-  for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
-    if (i < m->nmaster) {
-      h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), 0);
-      if (my + HEIGHT(c) < m->wh) {
-        my += HEIGHT(c);
-      }
-    } else {
-      h = (m->wh - ty) / (n - i);
-      resize(c, m->wx, m->wy + ty, m->ww - mw - (2 * c->bw), h - (2 * c->bw), 0);
-      if (ty + HEIGHT(c) < m->wh) {
-        ty += HEIGHT(c);
-      }
-    }
   }
 }
 
@@ -2006,7 +1969,7 @@ void zoomfirstwrp(const Arg *arg)
     return;
   }
 
-  if (istileright()) {
+  if (islayoutright()) {
     zoomlast(arg);
   } else {
     zoomfirst(arg);
@@ -2040,7 +2003,7 @@ void zoomlastwrp(const Arg *arg)
     return;
   }
 
-  if (istileright()) {
+  if (islayoutright()) {
     zoomfirst(arg);
   } else {
     zoomlast(arg);
@@ -2114,8 +2077,8 @@ void zoommon(const Arg *arg)
 
 /* deck layout */
 static void deck(Monitor *m) {
-  Client *c;
   unsigned int i, n, h, mw, my;
+  Client *c;
 
   if (!m) {
     return;
@@ -2138,18 +2101,20 @@ static void deck(Monitor *m) {
   for (i = my = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
     if (i < m->nmaster) {
       h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-      resize(c, m->wx, m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), False);
-      my += HEIGHT(c);
+      resize(c, m->wx, m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), 0);
+      if (my + HEIGHT(c) < m->wh) {
+        my += HEIGHT(c);
+      }
     } else {
-      resize(c, m->wx + mw, m->wy, m->ww - mw - (2 * c->bw), m->wh - (2 * c->bw), False);
+      resize(c, m->wx + mw, m->wy, m->ww - mw - (2 * c->bw), m->wh - (2 * c->bw), 0);
     }
   }
 }
 
 /* deck layout (master right) */
 static void deckright(Monitor *m) {
-  Client *c;
   unsigned int i, n, h, mw, my;
+  Client *c;
 
   if (!m) {
     return;
@@ -2172,10 +2137,132 @@ static void deckright(Monitor *m) {
   for (i = my = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
     if (i < m->nmaster) {
       h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), False);
-      my += HEIGHT(c);
+      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), 0);
+      if (my + HEIGHT(c) < m->wh) {
+        my += HEIGHT(c);
+      }
     } else {
-      resize(c, m->wx, m->wy, m->ww - mw - (2 * c->bw), m->wh - (2 * c->bw), False);
+      resize(c, m->wx, m->wy, m->ww - mw - (2 * c->bw), m->wh - (2 * c->bw), 0);
+    }
+  }
+}
+
+/* tile layout (master right) */
+static void tileright(Monitor *m)
+{
+  unsigned int i, n, h, mw, my, ty;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  if (n > m->nmaster) {
+    mw = m->nmaster ? m->ww * m->mfact : 0;
+  } else {
+    mw = m->ww;
+  }
+
+  for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    if (i < m->nmaster) {
+      h = (m->wh - my) / (MIN(n, m->nmaster) - i);
+      resize(c, m->wx + (m->ww - mw), m->wy + my, mw - (2 * c->bw), h - (2 * c->bw), 0);
+      if (my + HEIGHT(c) < m->wh) {
+        my += HEIGHT(c);
+      }
+    } else {
+      h = (m->wh - ty) / (n - i);
+      resize(c, m->wx, m->wy + ty, m->ww - mw - (2 * c->bw), h - (2 * c->bw), 0);
+      if (ty + HEIGHT(c) < m->wh) {
+        ty += HEIGHT(c);
+      }
+    }
+  }
+}
+
+/* tile col layout */
+static void tilecol(Monitor *m)
+{
+  unsigned int i, n, h, w, mw, mx, ty;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  if (n > m->nmaster) {
+    mw = m->nmaster ? m->ww * m->mfact : 0;
+  } else {
+    mw = m->ww;
+  }
+
+  for (i = mx = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    if (i < m->nmaster) {
+      w = (mw - mx) / (MIN(n, m->nmaster) - i);
+      resize(c, m->wx + mx, m->wy, w - (2 * c->bw), m->wh - (2 * c->bw), 0);
+      if (mx + WIDTH(c) < mw) {
+        mx += WIDTH(c);
+      }
+    } else {
+      h = (m->wh - ty) / (n - i);
+      resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2 * c->bw), h - (2 * c->bw), 0);
+      if (ty + HEIGHT(c) < m->wh) {
+        ty += HEIGHT(c);
+      }
+    }
+  }
+}
+
+/* tile col layout (master right) */
+static void tilecolright(Monitor *m)
+{
+  unsigned int i, n, h, w, mw, mx, ty;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  if (n > m->nmaster) {
+    mw = m->nmaster ? m->ww * m->mfact : 0;
+  } else {
+    mw = m->ww;
+  }
+
+  for (i = mx = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    if (i < m->nmaster) {
+      w = (mw - mx) / (MIN(n, m->nmaster) - i);
+      resize(c, m->wx + m->ww - mx - w, m->wy, w - (2 * c->bw), m->wh - (2 * c->bw), 0);
+      if (mx + WIDTH(c) < mw) {
+        mx += WIDTH(c);
+      }
+    } else {
+      h = (m->wh - ty) / (n - i);
+      resize(c, m->wx, m->wy + ty, m->ww - mw - (2 * c->bw), h - (2 * c->bw), 0);
+      if (ty + HEIGHT(c) < m->wh) {
+        ty += HEIGHT(c);
+      }
     }
   }
 }

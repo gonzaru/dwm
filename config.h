@@ -68,17 +68,21 @@ static const int refreshrate = 120;     /* refresh rate (per second) for client 
 static const int modkeycode = 0;        /* 0 means dynamically guess Super_L, else use exact keycode (e.g. 133) */
 #endif
 
-static void tileright(Monitor *m); /* master on right */
 static void deck(Monitor *m);
-static void deckright(Monitor *m); /* master on right */
+static void deckright(Monitor *m);    /* master on right */
+static void tileright(Monitor *m);    /* master on right */
+static void tilecol(Monitor *m);
+static void tilecolright(Monitor *m); /* master on right */
 static const Layout layouts[] = {
   /* symbol     arrange function */
-  { "[]=",      tile },      /* first entry is default */
-  { "><>",      NULL },      /* no layout function means floating behavior */
+  { "[]=",      tile },         /* first entry is default */
+  { "><>",      NULL },         /* no layout function means floating behavior */
   { "[M]",      monocle },
-  { "=[]",      tileright }, /* master on right */
+  { "=[]",      tileright },    /* master on right */
+  { "[]|",      tilecol },
+  { "|[]",      tilecolright }, /* master on right */
   { "[]:",      deck },
-  { ":[]",      deckright }, /* master right */
+  { ":[]",      deckright },    /* master on right */
   { NULL,       NULL },
 };
 

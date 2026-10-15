@@ -502,7 +502,8 @@ int islayoutbottom(void)
     return 0;
   }
 
-  return selmon->lt[selmon->sellt]->arrange == vertbottom;
+  return selmon->lt[selmon->sellt]->arrange == bstackhorizbottom
+    || selmon->lt[selmon->sellt]->arrange == vertbottom;
 }
 
 /* check if the layout is on the right position (default left) */
@@ -1527,7 +1528,7 @@ void setmfactwrp(const Arg *arg)
 
   a = *arg;
 
-  if (islayoutright()) {
+  if (islayoutright() || islayoutbottom()) {
     a.f = -a.f;
   }
   setmfact(&a);
@@ -2103,7 +2104,88 @@ void zoommon(const Arg *arg)
   focusmaster(arg);
 }
 
-/* extra layouts */
+/* EXTRA LAYOUTS */
+
+/* bstackhoriz layout */
+static void bstackhoriz(Monitor *m)
+{
+  unsigned int i, n, w, h, mh, mx, ty;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  if (n > m->nmaster) {
+    mh = m->nmaster ? m->wh * m->mfact : 0;
+  } else {
+    mh = m->wh;
+  }
+
+  for (i = mx = 0, ty = mh, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    if (i < m->nmaster) {
+      w = (m->ww - mx) / (MIN(n, m->nmaster) - i);
+      resize(c, m->wx + mx, m->wy, w - (2 * c->bw), mh - (2 * c->bw), 0);
+      if (mx + WIDTH(c) < m->ww) {
+        mx += WIDTH(c);
+      }
+    } else {
+      h = (m->wh - ty) / (n - i);
+      resize(c, m->wx, m->wy + ty, m->ww - (2 * c->bw), h - (2 * c->bw), 0);
+      if (ty + HEIGHT(c) < m->wh) {
+        ty += HEIGHT(c);
+      }
+    }
+  }
+}
+
+/* bstackhoriz layout (master bottom) */
+static void bstackhorizbottom(Monitor *m)
+{
+  unsigned int i, n, w, h, mh, mx, ty;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  if (n > m->nmaster) {
+    mh = m->nmaster ? m->wh * m->mfact : 0;
+  } else {
+    mh = m->wh;
+  }
+
+  for (i = mx = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    if (i < m->nmaster) {
+      w = (m->ww - mx) / (MIN(n, m->nmaster) - i);
+      resize(c, m->wx + mx, m->wy + (m->wh - mh), w - (2 * c->bw), mh - (2 * c->bw), 0);
+      if (mx + WIDTH(c) < m->ww) {
+        mx += WIDTH(c);
+      }
+    } else {
+      h = (m->wh - mh - ty) / (n - i);
+      resize(c, m->wx, m->wy + (m->wh - mh) - ty - h, m->ww - (2 * c->bw), h - (2 * c->bw), 0);
+      if (ty + HEIGHT(c) < m->wh - mh) {
+        ty += HEIGHT(c);
+      }
+    }
+  }
+}
+
 
 /* deck layout */
 static void deck(Monitor *m) {

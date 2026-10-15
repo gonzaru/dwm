@@ -68,29 +68,33 @@ static const int refreshrate = 120;     /* refresh rate (per second) for client 
 static const int modkeycode = 0;        /* 0 means dynamically guess Super_L, else use exact keycode (e.g. 133) */
 #endif
 
+static void bstackhoriz(Monitor *m);
+static void bstackhorizbottom(Monitor *m); /* master on bottom */
 static void deck(Monitor *m);
-static void deckright(Monitor *m);    /* master on right */
+static void deckright(Monitor *m);         /* master on right */
 static void horiz(Monitor *m);
-static void horizright(Monitor *m);   /* master on right */
-static void tileright(Monitor *m);    /* master on right */
+static void horizright(Monitor *m);        /* master on right */
+static void tileright(Monitor *m);         /* master on right */
 static void tilecol(Monitor *m);
-static void tilecolright(Monitor *m); /* master on right */
+static void tilecolright(Monitor *m);      /* master on right */
 static void vert(Monitor *m);
-static void vertbottom(Monitor *m);   /* master on bottom */
+static void vertbottom(Monitor *m);        /* master on bottom */
 static const Layout layouts[] = {
   /* symbol     arrange function */
-  { "[]=",      tile },         /* first entry is default */
-  { "><>",      NULL },         /* no layout function means floating behavior */
+  { "[]=",      tile },              /* first entry is default */
+  { "><>",      NULL },              /* no layout function means floating behavior */
   { "[M]",      monocle },
-  { "=[]",      tileright },    /* master on right */
+  { "=[]",      tileright },         /* master on right */
   { "[|]=",     tilecol },
-  { "=[|]",     tilecolright }, /* master on right */
+  { "=[|]",     tilecolright },      /* master on right */
+ { "===:",      bstackhoriz },
+  { ":===",     bstackhorizbottom }, /* master on bottom */
   { "|||:",     horiz },
-  { ":|||",     horizright },   /* master on right */
-  { "_-_",      vert },
-  { "-_-",      vertbottom },   /* mastet on bottom */
+  { ":|||",     horizright },        /* master on right */
+  { "---:",     vert },
+  { ":---",     vertbottom },        /* mastet on bottom */
   { "[D]:",     deck },
-  { ":[D]",     deckright },    /* master on right */
+  { ":[D]",     deckright },         /* master on right */
   { NULL,       NULL },
 };
 

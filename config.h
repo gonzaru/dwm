@@ -87,7 +87,7 @@ static const Layout layouts[] = {
   { "[M]",      monocle },
   { "[|]=",     tilecol },
   { "=[|]",     tilecolright },      /* master on right */
- { "===:",      bstackhoriz },
+  { "===:",     bstackhoriz },
   { ":===",     bstackhorizbottom }, /* master on bottom */
   { "|||:",     horiz },
   { ":|||",     horizright },        /* master on right */

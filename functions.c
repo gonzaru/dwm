@@ -48,6 +48,7 @@ char *getwindow(Window w, const char *type);
 Window getidfromclass(const Arg *arg);
 Client *getclientfromid(Window winid);
 int islayoutbottom(void);
+int islayoutfloating(void);
 int islayoutright(void);
 int ismaster(Client *c);
 void killunsel(const Arg *arg);
@@ -269,7 +270,7 @@ void focuslast(const Arg *arg)
 {
   Client *c, *cl;
 
-  if (!selmon || !selmon->sel || selmon->sel->isfloating) {
+  if (!selmon || !selmon->nmaster || !selmon->sel || selmon->sel->isfloating || islayoutfloating()) {
     return;
   }
 
@@ -289,7 +290,7 @@ void focusmaster(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon || !selmon->sel || !selmon->nmaster) {
+  if (!selmon || !selmon->nmaster || !selmon->sel || selmon->sel->isfloating || islayoutfloating()) {
     return;
   }
 
@@ -507,6 +508,16 @@ int islayoutbottom(void)
   return selmon->lt[selmon->sellt]->arrange == bstackhorizbottom
     || selmon->lt[selmon->sellt]->arrange == horizright
     || selmon->lt[selmon->sellt]->arrange == vertbottom;
+}
+
+/* check if the layout is floating */
+int islayoutfloating(void)
+{
+  if (!selmon || !selmon->lt[selmon->sellt]) {
+    return 0;
+  }
+
+  return selmon->lt[selmon->sellt]->arrange == NULL;
 }
 
 /* check if the layout is on the right position (default left) */
@@ -1470,7 +1481,7 @@ void setasmastermon(Client *cm)
 /* set the default mfact */
 void setdefmfact(const Arg *arg)
 {
-  if (!arg || !selmon || !selmon->lt[selmon->sellt] || !selmon->lt[selmon->sellt]->arrange) {
+  if (!arg || !selmon || islayoutfloating()) {
     return;
   }
 
@@ -1663,7 +1674,7 @@ void spawnsh(const char *cmd)
 void stackdown(const Arg *arg) {
   Client *c;
 
-  if (!selmon || !selmon->sel || selmon->sel->isfloating || ismaster(selmon->sel)) {
+  if (!selmon || !selmon->sel || selmon->sel->isfloating || islayoutfloating() || ismaster(selmon->sel)) {
     return;
   }
 
@@ -1695,7 +1706,7 @@ void stackdownwrp(const Arg *arg)
 void stackup(const Arg *arg) {
   Client *c, *p;
 
-  if (!selmon || !selmon->sel || selmon->sel->isfloating || ismaster(selmon->sel)) {
+  if (!selmon || !selmon->sel || selmon->sel->isfloating || islayoutfloating() || ismaster(selmon->sel)) {
     return;
   }
 
@@ -2010,8 +2021,7 @@ void zoomfirst(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating
-      || !selmon->lt[selmon->sellt] || !selmon->lt[selmon->sellt]->arrange) {
+  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating || islayoutfloating()) {
     return;
   }
 
@@ -2044,8 +2054,7 @@ void zoomlast(const Arg *arg)
 {
   Client *c, *cl;
 
-  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating
-      || !selmon->lt[selmon->sellt] || !selmon->lt[selmon->sellt]->arrange) {
+  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating || islayoutfloating()) {
     return;
   }
 

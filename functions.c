@@ -84,7 +84,9 @@ void showapps(const Arg *arg);
 void showurgent(const Arg *arg);
 void spawnsh(const char *cmd);
 void stackdown(const Arg *arg);
+void stackdownwrp(const Arg *arg);
 void stackup(const Arg *arg);
+void stackupwrp(const Arg *arg);
 void toggleborder(const Arg *arg);
 void togglefullscr(const Arg *arg);
 void togglemousecursor(const Arg *arg);
@@ -503,6 +505,7 @@ int islayoutbottom(void)
   }
 
   return selmon->lt[selmon->sellt]->arrange == bstackhorizbottom
+    || selmon->lt[selmon->sellt]->arrange == horizright
     || selmon->lt[selmon->sellt]->arrange == vertbottom;
 }
 
@@ -1674,6 +1677,20 @@ void stackdown(const Arg *arg) {
   }
 }
 
+/* move the client down from the stack wrapper */
+void stackdownwrp(const Arg *arg)
+{
+  if (!selmon) {
+    return;
+  }
+
+  if (islayoutbottom()) {
+    stackup(arg);
+  } else {
+    stackdown(arg);
+  }
+}
+
 /* move the client up from the stack */
 void stackup(const Arg *arg) {
   Client *c, *p;
@@ -1697,6 +1714,20 @@ void stackup(const Arg *arg) {
     c->next = selmon->sel;
     focus(selmon->sel);
     arrange(selmon);
+  }
+}
+
+/* move the client up from the stack wrapper */
+void stackupwrp(const Arg *arg)
+{
+  if (!selmon) {
+    return;
+  }
+
+  if (islayoutbottom()) {
+    stackdown(arg);
+  } else {
+    stackup(arg);
   }
 }
 
@@ -1979,7 +2010,8 @@ void zoomfirst(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating) {
+  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating
+      || !selmon->lt[selmon->sellt] || !selmon->lt[selmon->sellt]->arrange) {
     return;
   }
 
@@ -2012,7 +2044,8 @@ void zoomlast(const Arg *arg)
 {
   Client *c, *cl;
 
-  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating) {
+  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating
+      || !selmon->lt[selmon->sellt] || !selmon->lt[selmon->sellt]->arrange) {
     return;
   }
 

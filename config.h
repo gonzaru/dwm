@@ -82,9 +82,9 @@ static void vertbottom(Monitor *m);        /* master on bottom */
 static const Layout layouts[] = {
   /* symbol     arrange function */
   { "[]=",      tile },              /* first entry is default */
+  { "=[]",      tileright },         /* master on right */
   { "><>",      NULL },              /* no layout function means floating behavior */
   { "[M]",      monocle },
-  { "=[]",      tileright },         /* master on right */
   { "[|]=",     tilecol },
   { "=[|]",     tilecolright },      /* master on right */
  { "===:",      bstackhoriz },
@@ -135,8 +135,8 @@ static Key keys[] = {
   { MODKEY,                       XK_Tab,    view,           {0} },
   { MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
   { MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} },
-  { MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} },
-  { MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
+  { MODKEY,                       XK_f,      setlayout,      {.v = &layouts[2]} },
+  { MODKEY,                       XK_m,      setlayout,      {.v = &layouts[3]} },
   { MODKEY,                       XK_space,  setlayout,      {0} },
   { MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
   { MODKEY,                       XK_0,      view,           {.ui = ~0 } },
@@ -158,11 +158,11 @@ static Key keys[] = {
   /* END DEFAULTS */
 
   /* MY MODKEYS */
-  { MODKEY|ShiftMask,               XK_t,            setlayout,          {.v = &layouts[3]} }, /* tile layout (master right) */
+  { MODKEY|ShiftMask,               XK_t,            setlayout,          {.v = &layouts[1]} }, /* tile layout (master right) */
   { MODKEY,                         XK_bracketleft,  zoomfirstwrp,       {0} },
-  { MODKEY|ShiftMask,               XK_bracketleft,  stackup,            {0} },
+  { MODKEY|ShiftMask,               XK_bracketleft,  stackupwrp,         {0} },
   { MODKEY,                         XK_bracketright, zoomlastwrp,        {0} },
-  { MODKEY|ShiftMask,               XK_bracketright, stackdown,          {0} },
+  { MODKEY|ShiftMask,               XK_bracketright, stackdownwrp,       {0} },
   { MODKEY|ShiftMask,               XK_j,            focusstackfull,     {.i = +1 } },
   { MODKEY|ControlMask,             XK_j,            focusstackmon,      {.i = +1 } },
   { MODKEY|ShiftMask,               XK_k,            focusstackfull,     {.i = -1 } },

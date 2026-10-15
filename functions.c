@@ -42,10 +42,12 @@ void focusmonmaster(const Arg *arg);
 void focusstackfull(const Arg *arg);
 void focusstackmon(const Arg *arg);
 void focusstacknum(const Arg *arg);
+void focusstackwrp(const Arg *arg);
 char *gettmpdir(void);
 char *getwindow(Window w, const char *type);
 Window getidfromclass(const Arg *arg);
 Client *getclientfromid(Window winid);
+int islayoutbottom(void);
 int islayoutright(void);
 int ismaster(Client *c);
 void killunsel(const Arg *arg);
@@ -316,7 +318,7 @@ void focusstackfull(const Arg *arg)
   if (selmon->sel && selmon->sel->isfullscreen) {
     setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
   }
-  focusstack(arg);
+  focusstackwrp(arg);
 }
 
 /* focus stack (multi monitor) */
@@ -390,6 +392,23 @@ void focusstacknum(const Arg *arg)
   }
 
   focus(c);
+}
+
+/* focus stack wrapper */
+void focusstackwrp(const Arg *arg)
+{
+  Arg a;
+
+  if (!arg || !selmon) {
+    return;
+  }
+
+  a = *arg;
+
+  if (islayoutbottom()) {
+    a.i = -a.i;
+  }
+  focusstack(&a);
 }
 
 /* get the tmpdir */
@@ -474,6 +493,16 @@ Client *getclientfromid(Window winid)
     }
   }
   return NULL;
+}
+
+/* check if the layout is on the bottom position (default top) */
+int islayoutbottom(void)
+{
+  if (!selmon || !selmon->lt[selmon->sellt]) {
+    return 0;
+  }
+
+  return selmon->lt[selmon->sellt]->arrange == vertbottom;
 }
 
 /* check if the layout is on the right position (default left) */
@@ -1970,7 +1999,7 @@ void zoomfirstwrp(const Arg *arg)
     return;
   }
 
-  if (islayoutright()) {
+  if (islayoutright() || islayoutbottom()) {
     zoomlast(arg);
   } else {
     zoomfirst(arg);
@@ -2004,7 +2033,7 @@ void zoomlastwrp(const Arg *arg)
     return;
   }
 
-  if (islayoutright()) {
+  if (islayoutright() || islayoutbottom()) {
     zoomfirst(arg);
   } else {
     zoomlast(arg);
@@ -2315,5 +2344,51 @@ static void tilecolright(Monitor *m)
         ty += HEIGHT(c);
       }
     }
+  }
+}
+
+/* vertical layout */
+static void vert(Monitor *m)
+{
+  unsigned int i, n, h;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  h = m->wh / n;
+  for (i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    resize(c, m->wx, m->wy + (i * h), m->ww - (2 * c->bw), h - (2 * c->bw), 0);
+  }
+}
+
+/* vertical layout (master bottom) */
+static void vertbottom(Monitor *m)
+{
+  unsigned int i, n, h;
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++) {
+    ;
+  }
+  if (n == 0) {
+    return;
+  }
+
+  h = m->wh / n;
+  for (i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    resize(c, m->wx, m->wy + ((n - 1 - i) * h), m->ww - (2 * c->bw), h - (2 * c->bw), 0);
   }
 }

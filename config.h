@@ -75,6 +75,8 @@ static void horizright(Monitor *m);   /* master on right */
 static void tileright(Monitor *m);    /* master on right */
 static void tilecol(Monitor *m);
 static void tilecolright(Monitor *m); /* master on right */
+static void vert(Monitor *m);
+static void vertbottom(Monitor *m);   /* master on bottom */
 static const Layout layouts[] = {
   /* symbol     arrange function */
   { "[]=",      tile },         /* first entry is default */
@@ -84,9 +86,11 @@ static const Layout layouts[] = {
   { "[|]=",     tilecol },
   { "=[|]",     tilecolright }, /* master on right */
   { "|||:",     horiz },
-  { ":|||",     horizright },   /* master right */
+  { ":|||",     horizright },   /* master on right */
+  { "_-_",      vert },
+  { "-_-",      vertbottom },   /* mastet on bottom */
   { "[D]:",     deck },
-  { ":[D]",     deckright },    /* master right */
+  { ":[D]",     deckright },    /* master on right */
   { NULL,       NULL },
 };
 
@@ -117,14 +121,10 @@ static Key keys[] = {
   { MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
   { MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
   { MODKEY,                       XK_b,      togglebar,      {0} },
-  { MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
-  { MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
+  { MODKEY,                       XK_j,      focusstackwrp,  {.i = +1 } },
+  { MODKEY,                       XK_k,      focusstackwrp,  {.i = -1 } },
   { MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
   { MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
-  /*
-  { MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
-  { MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
-  */
   { MODKEY,                       XK_h,      setmfactwrp,    {.f = -0.05} },
   { MODKEY,                       XK_l,      setmfactwrp,    {.f = +0.05} },
   { MODKEY,                       XK_Return, zoom,           {0} },

@@ -49,6 +49,7 @@ Window getidfromclass(const Arg *arg);
 Client *getclientfromid(Window winid);
 int islayoutbottom(void);
 int islayoutfloating(void);
+int islayouthide(void);
 int islayoutright(void);
 int ismaster(Client *c);
 void killunsel(const Arg *arg);
@@ -174,7 +175,7 @@ void focusclass(const Arg *arg) {
   char *selcls = NULL, *cls = NULL;
   int match = 0;
 
-  if (!arg || !selmon || !selmon->sel) {
+  if (!arg || !selmon || !selmon->sel || islayouthide()) {
     return;
   }
 
@@ -237,7 +238,7 @@ void focusclient(const Arg *arg)
   char *cls;
   int match;
 
-  if (!arg || !arg->v) {
+  if (!arg || !arg->v || islayouthide()) {
     return;
   }
 
@@ -270,7 +271,7 @@ void focuslast(const Arg *arg)
 {
   Client *c, *cl;
 
-  if (!selmon || !selmon->nmaster || !selmon->sel || selmon->sel->isfloating || islayoutfloating()) {
+  if (!selmon || !selmon->nmaster || !selmon->sel || selmon->sel->isfloating || islayoutfloating() || islayouthide()) {
     return;
   }
 
@@ -290,7 +291,7 @@ void focusmaster(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon || !selmon->nmaster || !selmon->sel || selmon->sel->isfloating || islayoutfloating()) {
+  if (!selmon || !selmon->nmaster || !selmon->sel || selmon->sel->isfloating || islayoutfloating() || islayouthide()) {
     return;
   }
 
@@ -314,7 +315,7 @@ void focusmonmaster(const Arg *arg)
 /* focus stack on the fullcreen window */
 void focusstackfull(const Arg *arg)
 {
-  if (!arg || !selmon) {
+  if (!arg || !selmon || islayouthide()) {
     return;
   }
 
@@ -331,7 +332,7 @@ void focusstackmon(const Arg *arg)
   Client *c = NULL, *first = NULL, *last = NULL, *prev = NULL, *prevvis = NULL, *next = NULL;
   int match = 0;
 
-  if (!arg || !selmon || (selmon->sel && selmon->sel->isfullscreen && lockfullscreen)) {
+  if (!arg || !selmon || islayouthide() || (selmon->sel && selmon->sel->isfullscreen && lockfullscreen)) {
     return;
   }
 
@@ -377,7 +378,7 @@ void focusstacknum(const Arg *arg)
   Client *c, *next;
   int i;
 
-  if (!arg || !selmon || !selmon->clients) {
+  if (!arg || !selmon || !selmon->clients || islayouthide()) {
     return;
   }
 
@@ -402,7 +403,7 @@ void focusstackwrp(const Arg *arg)
 {
   Arg a;
 
-  if (!arg || !selmon) {
+  if (!arg || !selmon || islayouthide()) {
     return;
   }
 
@@ -520,6 +521,16 @@ int islayoutfloating(void)
   return selmon->lt[selmon->sellt]->arrange == NULL;
 }
 
+/* check if is the hide layout */
+int islayouthide(void)
+{
+  if (!selmon || !selmon->lt[selmon->sellt]) {
+    return 0;
+  }
+
+  return selmon->lt[selmon->sellt]->arrange == hide;
+}
+
 /* check if the layout is on the right position (default left) */
 int islayoutright(void)
 {
@@ -553,7 +564,7 @@ void killunsel(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon || !selmon->sel) {
+  if (!selmon || !selmon->sel || islayouthide()) {
     return;
   }
 
@@ -1135,7 +1146,7 @@ void reloadbrowser(const Arg *arg)
   unsigned int mask_ret;
   char *cls;
 
-  if (!arg || !arg->v || !selmon) {
+  if (!arg || !arg->v || !selmon || islayouthide()) {
     return;
   }
 
@@ -1274,7 +1285,7 @@ void setscratchpad(const Arg *arg) {
   char *scratchclass, *cls;
   int match;
 
-  if (!arg || !arg->v || !selmon || !selmon->sel) {
+  if (!arg || !arg->v || !selmon || !selmon->sel || islayouthide()) {
     return;
   }
 
@@ -1311,7 +1322,7 @@ void unsetscratchpad(const Arg *arg) {
   char *cls;
   int match;
 
-  if (!arg || !arg->v || !selmon || !selmon->sel || !user || !tmpdir) {
+  if (!arg || !arg->v || !selmon || !selmon->sel || !user || !tmpdir || islayouthide()) {
     return;
   }
 
@@ -1351,7 +1362,7 @@ void scratchpadmon(const Arg *arg)
   char *cls;
   int found = 0, match;
 
-  if (!arg || !arg->v || !selmon) {
+  if (!arg || !arg->v || !selmon || islayouthide()) {
     return;
   }
 
@@ -1481,7 +1492,7 @@ void setasmastermon(Client *cm)
 /* set the default mfact */
 void setdefmfact(const Arg *arg)
 {
-  if (!arg || !selmon || islayoutfloating()) {
+  if (!arg || !selmon || islayoutfloating() || islayouthide()) {
     return;
   }
 
@@ -1523,7 +1534,7 @@ void setlayoutmon(const Arg *arg, Monitor *m)
 /* set the default nmaster */
 void setdefnmaster(const Arg *arg)
 {
-  if (!selmon) {
+  if (!selmon || islayoutfloating() || islayouthide()) {
     return;
   }
 
@@ -1536,7 +1547,7 @@ void setmfactwrp(const Arg *arg)
 {
   Arg a;
 
-  if (!arg || !selmon) {
+  if (!arg || !selmon || islayouthide()) {
     return;
   }
 
@@ -1578,7 +1589,7 @@ void showapps(const Arg *arg)
   int nclients = 0;
   char *cls;
 
-  if (!arg || !arg->v || !user || !tmpdir) {
+  if (!arg || !arg->v || !user || !tmpdir || islayouthide()) {
     return;
   }
 
@@ -1633,7 +1644,7 @@ void showurgent(const Arg *arg)
   Monitor *m;
   Client *c;
 
-  if (!selmon) {
+  if (!selmon || islayouthide()) {
     return;
   }
 
@@ -1674,7 +1685,8 @@ void spawnsh(const char *cmd)
 void stackdown(const Arg *arg) {
   Client *c;
 
-  if (!selmon || !selmon->sel || selmon->sel->isfloating || islayoutfloating() || ismaster(selmon->sel)) {
+  if (!selmon || !selmon->sel || selmon->sel->isfloating || islayoutfloating() || islayouthide()
+      || ismaster(selmon->sel)) {
     return;
   }
 
@@ -1691,7 +1703,7 @@ void stackdown(const Arg *arg) {
 /* move the client down from the stack wrapper */
 void stackdownwrp(const Arg *arg)
 {
-  if (!selmon) {
+  if (!selmon || islayouthide()) {
     return;
   }
 
@@ -1706,7 +1718,8 @@ void stackdownwrp(const Arg *arg)
 void stackup(const Arg *arg) {
   Client *c, *p;
 
-  if (!selmon || !selmon->sel || selmon->sel->isfloating || islayoutfloating() || ismaster(selmon->sel)) {
+  if (!selmon || !selmon->sel || selmon->sel->isfloating || islayoutfloating() || islayouthide()
+      || ismaster(selmon->sel)) {
     return;
   }
 
@@ -1731,7 +1744,7 @@ void stackup(const Arg *arg) {
 /* move the client up from the stack wrapper */
 void stackupwrp(const Arg *arg)
 {
-  if (!selmon) {
+  if (!selmon || islayouthide()) {
     return;
   }
 
@@ -1745,7 +1758,7 @@ void stackupwrp(const Arg *arg)
 /* toggle the window border */
 void toggleborder(const Arg *arg)
 {
-  if (!selmon || !selmon->sel) {
+  if (!selmon || !selmon->sel || islayouthide()) {
     return;
   }
   if (selmon->sel->bw) {
@@ -1760,7 +1773,7 @@ void toggleborder(const Arg *arg)
 /* toggle to fullscreen */
 void togglefullscr(const Arg *arg)
 {
-  if (!selmon || !selmon->sel) {
+  if (!selmon || !selmon->sel || islayouthide()) {
     return;
   }
 
@@ -1806,7 +1819,7 @@ void togglemousecursor(const Arg *arg)
 /* toggle bar position between top and bottom */
 void togglebarpos(const Arg *arg)
 {
-  if (!selmon || !selmon->showbar) {
+  if (!selmon || !selmon->showbar || islayouthide()) {
     return;
   }
 
@@ -2021,7 +2034,8 @@ void zoomfirst(const Arg *arg)
 {
   Client *c;
 
-  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating || islayoutfloating()) {
+  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating || islayoutfloating()
+      || islayouthide()) {
     return;
   }
 
@@ -2038,7 +2052,7 @@ void zoomfirst(const Arg *arg)
 /* zoom first wrapper */
 void zoomfirstwrp(const Arg *arg)
 {
-  if (!selmon) {
+  if (!selmon || islayouthide()) {
     return;
   }
 
@@ -2054,7 +2068,8 @@ void zoomlast(const Arg *arg)
 {
   Client *c, *cl;
 
-  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating || islayoutfloating()) {
+  if (!selmon || !selmon->sel || !ismaster(selmon->sel) || selmon->sel->isfloating || islayoutfloating()
+      || islayouthide()) {
     return;
   }
 
@@ -2072,7 +2087,7 @@ void zoomlast(const Arg *arg)
 /* zoom last wrapper */
 void zoomlastwrp(const Arg *arg)
 {
-  if (!selmon) {
+  if (!selmon || islayouthide()) {
     return;
   }
 
@@ -2095,7 +2110,7 @@ void zoommon(const Arg *arg)
   unsigned int m2_tagset;
 
   /* no next monitor */
-  if (!mons || !mons->next) {
+  if (!mons || !mons->next || islayouthide()) {
     return;
   }
 
@@ -2301,6 +2316,29 @@ static void deckright(Monitor *m) {
       }
     } else {
       resize(c, m->wx, m->wy, m->ww - mw - (2 * c->bw), m->wh - (2 * c->bw), 0);
+    }
+  }
+}
+
+/* hide layout */
+static void hide(Monitor *m)
+{
+  Client *c;
+
+  if (!m) {
+    return;
+  }
+
+  /* hide showbar */
+  if (m->showbar) {
+    m->showbar = 0;
+    updatebarpos(m);
+    XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
+  }
+
+  for (c = m->clients; c; c = c->next) {
+    if (ISVISIBLE(c)) {
+      XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
     }
   }
 }

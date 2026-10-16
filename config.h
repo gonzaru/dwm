@@ -72,6 +72,7 @@ static void bstackhoriz(Monitor *m);
 static void bstackhorizbottom(Monitor *m); /* master on bottom */
 static void deck(Monitor *m);
 static void deckright(Monitor *m);         /* master on right */
+static void hide(Monitor *m);
 static void horiz(Monitor *m);
 static void horizright(Monitor *m);        /* master on right */
 static void tileright(Monitor *m);         /* master on right */
@@ -95,6 +96,7 @@ static const Layout layouts[] = {
   { ":---",     vertbottom },        /* mastet on bottom */
   { "[D]:",     deck },
   { ":[D]",     deckright },         /* master on right */
+  { "[.]",      hide },
   { NULL,       NULL },
 };
 
@@ -223,6 +225,7 @@ static Key keys[] = {
   { MODKEY,                         XK_q,            reloaddwm,          {0} },
   { MODKEY,                         XK_equal,        setdefmfact,        {.f = defmfact} },
   { MODKEY|ShiftMask,               XK_equal,        setdefnmaster,      {0} },
+  { MODKEY|ControlMask,             XK_period,       setlayout,          {.v = &layouts[14]} }, /* hide layout */
 
   /* example of sendkey for h,j,k,l style */
   /*

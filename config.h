@@ -161,6 +161,7 @@ static Key keys[] = {
 
   /* MY MODKEYS */
   { MODKEY|ShiftMask,               XK_t,            setlayout,          {.v = &layouts[1]} }, /* tile layout (master right) */
+  { MODKEY|ControlMask,             XK_t,            toggletile,         {0} },
   { MODKEY,                         XK_bracketleft,  zoomfirstwrp,       {0} },
   { MODKEY|ShiftMask,               XK_bracketleft,  stackupwrp,         {0} },
   { MODKEY,                         XK_bracketright, zoomlastwrp,        {0} },

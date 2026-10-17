@@ -89,10 +89,11 @@ void stackdown(const Arg *arg);
 void stackdownwrp(const Arg *arg);
 void stackup(const Arg *arg);
 void stackupwrp(const Arg *arg);
+void togglebarpos(const Arg *arg);
 void toggleborder(const Arg *arg);
 void togglefullscr(const Arg *arg);
 void togglemousecursor(const Arg *arg);
-void togglebarpos(const Arg *arg);
+void toggletile(const Arg *arg);
 void writecurbar(void);
 void writecurlayout(void);
 void writecurmaster(void);
@@ -1755,6 +1756,19 @@ void stackupwrp(const Arg *arg)
   }
 }
 
+/* toggle bar position between top and bottom */
+void togglebarpos(const Arg *arg)
+{
+  if (!selmon || !selmon->showbar || islayouthide()) {
+    return;
+  }
+
+  selmon->topbar = !selmon->topbar;
+  updatebarpos(selmon);
+  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
+  arrange(selmon);
+}
+
 /* toggle the window border */
 void toggleborder(const Arg *arg)
 {
@@ -1816,17 +1830,36 @@ void togglemousecursor(const Arg *arg)
   }
 }
 
-/* toggle bar position between top and bottom */
-void togglebarpos(const Arg *arg)
+/* toggle between tile and tilecol layouts */
+void toggletile(const Arg *arg)
 {
-  if (!selmon || !selmon->showbar || islayouthide()) {
+  void (*target)(Monitor *) = NULL;
+  int i;
+
+  if (!selmon || !selmon->lt[selmon->sellt] || islayoutfloating() || islayouthide()) {
     return;
   }
 
-  selmon->topbar = !selmon->topbar;
-  updatebarpos(selmon);
-  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
-  arrange(selmon);
+  if (selmon->lt[selmon->sellt]->arrange == tile) {
+    target = tilecol;
+  } else if (selmon->lt[selmon->sellt]->arrange == tilecol) {
+    target = tile;
+  } else if (selmon->lt[selmon->sellt]->arrange == tileright) {
+    target = tilecolright;
+  } else if (selmon->lt[selmon->sellt]->arrange == tilecolright) {
+    target = tileright;
+  }
+
+  if (!target) {
+    return;
+  }
+
+  for (i = 0; layouts[i].symbol; i++) {
+    if (layouts[i].arrange == target) {
+      setlayout(&((Arg) { .v = &layouts[i] }));
+      return;
+    }
+  }
 }
 
 /* write the current bar */
